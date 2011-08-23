@@ -1,0 +1,13 @@
+[user]
+	name = Andrew Huynh
+	email = a5.t.huynh@gmail.com
+[color]
+	diff = auto
+	statut = auto
+	status = auto
+	branch = auto
+[core]
+	editor = mate -w
+	excludesfile = ~/.gitignore_global
+[alias]
+	stat = status

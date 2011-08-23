@@ -1,0 +1,19 @@
+# OS Generated Files
+.DS_Store
+Thumbs.db
+Icon?
+
+# Compiled Sources
+*.pyc
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+
