@@ -17,3 +17,13 @@ Icon?
 *.sql
 *.sqlite
 
+# XCode related files
+*.swp
+*~.nib
+build/
+*.pbxuser
+*.perspective
+*.perspective3
+*.mode1v3
+*.mode2v3
+xcuserdata/
