@@ -3,6 +3,22 @@
 Thumbs.db
 Icon?
 
+# Sass cache
+.sass-cache/
+
+# Latex generated files
+*.aux
+*.log
+*.out
+*.synctex.gz
+*.blg
+*.idx
+*.ind
+*.lof
+*.lot
+*.mpx
+*.toc
+
 # Compiled Sources
 *.pyc
 *.com
