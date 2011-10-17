@@ -3,6 +3,9 @@
 Thumbs.db
 Icon?
 
+# Matlab Generated
+*.m~
+
 # Sass cache
 .sass-cache/
 
@@ -18,6 +21,9 @@ Icon?
 *.lot
 *.mpx
 *.toc
+*.tui
+*.mp
+*.top
 
 # Compiled Sources
 *.pyc
