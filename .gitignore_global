@@ -6,6 +6,9 @@ Icon?
 # Matlab Generated
 *.m~
 
+# Sublime Text
+*.sublime-workspace
+
 # Sass cache
 .sass-cache/
 
