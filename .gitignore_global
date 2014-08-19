@@ -30,7 +30,6 @@ Icon?
 
 # Compiled Sources
 *.pyc
-*.com
 *.class
 *.dll
 *.exe
