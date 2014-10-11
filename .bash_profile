@@ -22,7 +22,7 @@ source /usr/local/bin/virtualenvwrapper.sh
 #-------------------------------------------------------------------------------
 # Load up handy-dandy git prompt functions
 source /Library/Developer/CommandLineTools/usr/share/git-core/git-prompt.sh
-export PS1="\[$(tput bold)\][\w]\$(__git_ps1)\n\[$(tput setaf 1)\]> \[$(tput sgr0)\]"
+export PS1="\[$(tput bold)\]\w\$(__git_ps1)\n\[$(tput setaf 1)\]> \[$(tput sgr0)\]"
 
 #-------------------------------------------------------------------------------
 # Setup some nice autocompletion functionality
