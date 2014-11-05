@@ -16,13 +16,13 @@ export GOPATH="/usr/local/golang"
 # calling it super easy
 #-------------------------------------------------------------------------------
 define () {
-	if command -v sdcv > /dev/null; then
-		# -0 show UTF-8 output
-		# -c show colorized output
-		sdcv -0c "$@"
-	else
-		echo "You need to install sdcv."
-	fi
+    if command -v sdcv > /dev/null; then
+        # -0 show UTF-8 output
+        # -c show colorized output
+        sdcv -0c "$@"
+    else
+        echo "You need to install sdcv."
+    fi
 }
 
 #-------------------------------------------------------------------------------
