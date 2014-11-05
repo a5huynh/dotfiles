@@ -12,6 +12,20 @@ export DOCKER_TLS_VERIFY=1
 export GOPATH="/usr/local/golang"
 
 #-------------------------------------------------------------------------------
+# If we have the sdcv tool installed, create a "define" function to make
+# calling it super easy
+#-------------------------------------------------------------------------------
+define () {
+	if command -v sdcv > /dev/null; then
+		# -0 show UTF-8 output
+		# -c show colorized output
+		sdcv -0c "$@"
+	else
+		echo "You need to install sdcv."
+	fi
+}
+
+#-------------------------------------------------------------------------------
 # Setup Python & virtualenvwrapper
 #-------------------------------------------------------------------------------
 export PYTHONPATH="/usr/local/lib/python2.7/site-packages:$PYTHONPATH"
