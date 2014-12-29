@@ -28,7 +28,6 @@ define () {
 #-------------------------------------------------------------------------------
 # Setup Python & virtualenvwrapper
 #-------------------------------------------------------------------------------
-export PYTHONPATH="/usr/local/lib/python2.7/site-packages:$PYTHONPATH"
 export WORKON_HOME=~/.pyenvs
 export PROJECT_HOME=$HOME/Documents/Current\ Work
 source /usr/local/bin/virtualenvwrapper.sh
