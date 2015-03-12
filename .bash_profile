@@ -2,6 +2,11 @@ export SVN_EDITOR=subl
 export EDITOR=vim
 
 export PATH="/usr/local/bin:/usr/local/sbin:~/bin:$PATH"
+#--------------------------------------------------------------------------------
+# Useful aliases
+#--------------------------------------------------------------------------------
+alias g='git'
+alias d='docker'
 
 # Setup Docker host
 export DOCKER_HOST=tcp://$(boot2docker ip 2>/dev/null):2376
