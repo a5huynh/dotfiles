@@ -17,6 +17,10 @@ fi
 
 # Setup GOPATH
 export GOPATH="/usr/local/golang"
+# Make sure gopath is in our path
+if [[ "$PATH" != *"/usr/local/golang"* ]]; then
+    export PATH="/usr/local/golang/bin:$PATH"
+fi
 
 #-------------------------------------------------------------------------------
 # If we have the sdcv tool installed, create a "define" function to make
