@@ -10,6 +10,7 @@
 	editor = ~/bin/subl --wait
 	excludesfile = ~/.gitignore_global
 [alias]
+    co = checkout
 	stat = status
 	lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%C(bold blue)<%an>%Creset' --abbrev-commit
 [difftool "sourcetree"]
