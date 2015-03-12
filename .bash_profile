@@ -1,7 +1,6 @@
 export SVN_EDITOR=subl
 export EDITOR=vim
 
-export PATH="/usr/local/bin:/usr/local/sbin:~/bin:$PATH"
 #--------------------------------------------------------------------------------
 # Useful aliases
 #--------------------------------------------------------------------------------
@@ -12,6 +11,11 @@ alias d='docker'
 export DOCKER_HOST=tcp://$(boot2docker ip 2>/dev/null):2376
 export DOCKER_CERT_PATH=~/.boot2docker/certs/boot2docker-vm
 export DOCKER_TLS_VERIFY=1
+# Make sure all our local bin folders in the path
+if [[ "$PATH" != *"~/bin"* ]]; then
+    export PATH="~/.local/lib/aws/bin:/usr/local/bin:/usr/local/sbin:~/bin:$PATH"
+fi
+
 
 # Setup GOPATH
 export GOPATH="/usr/local/golang"
