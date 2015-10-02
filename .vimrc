@@ -24,6 +24,7 @@ call vundle#end()
 " Setup vim-airline
 set laststatus=2
 let g:airline#extensions#tabline#enabled=1
+let g:airline_powerline_fonts=1
 
 " Tabby McTabby
 set tabstop=4
@@ -56,7 +57,7 @@ set t_Co=256
 set background=dark
 
 " Me favorite font
-set guifont=Source\ Code\ Pro:h14
+set guifont=Source\ Code\ Pro\ for\ Powerline\ Regular:h14
 
 " Keep backups and temporary files in one place.
 " We NEED to create these directories first.
