@@ -15,6 +15,9 @@ Plugin 'bling/vim-airline'
 " Fuzzy match
 Plugin 'kien/ctrlp.vim'
 
+Plugin 'godlygeek/tabular'
+Plugin 'plasticboy/vim-markdown'
+
 " All vundle plugins must be added before here
 call vundle#end()
 
