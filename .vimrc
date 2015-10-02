@@ -46,13 +46,14 @@ set t_vb=
 filetype on
 filetype plugin on
 syntax on
+colorscheme solarized
 set grepprg=grep\ -nH\ $*
 
 set t_Co=256
 set background=dark
 
 " Me favorite font
-set guifont=Inconsolata:h14
+set guifont=Source\ Code\ Pro:h14
 
 " Keep backups and temporary files in one place.
 " We NEED to create these directories first.
