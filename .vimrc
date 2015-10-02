@@ -1,5 +1,26 @@
 " Necessary for lots of cool vim things
 set nocompatible
+filetype off
+
+" Set the runtime path to include Vundle and initialize
+set rtp+=~/.vim/bundle/Vundle.vim
+call vundle#begin()
+
+" Let Vundle manage Vundle
+Plugin 'VundleVim/Vundle.vim'
+" Git wrapper
+Plugin 'tpope/vim-fugitive'
+" Lightweight vim status bar
+Plugin 'bling/vim-airline'
+" Fuzzy match
+Plugin 'kien/ctrlp.vim'
+
+" All vundle plugins must be added before here
+call vundle#end()
+
+" Setup vim-airline
+set laststatus=2
+let g:airline#extensions#tabline#enabled=1
 
 " Tabby McTabby
 set tabstop=4
