@@ -12,14 +12,16 @@ if [[ "$PATH" != *"~/bin"* ]]; then
     export PATH="~/.local/lib/aws/bin:/usr/local/bin:/usr/local/sbin:~/bin:$PATH"
 fi
 
-# Setup Docker host (if it's already running)
-2>/dev/null 1>/dev/null boot2docker shellinit
-
 # Setup GOPATH
 export GOPATH="/usr/local/golang"
 # Make sure gopath is in our path
 if [[ "$PATH" != *"/usr/local/golang"* ]]; then
     export PATH="/usr/local/golang/bin:$PATH"
+fi
+
+# Make sure texlive programs are accessible in the terminal
+if [[ "$PATH" != *"/Library/TeX/Distributions/Programs/texbin"* ]]; then
+    export PATH="/Library/TeX/Distributions/Programs/texbin:$PATH"
 fi
 
 #-------------------------------------------------------------------------------
@@ -46,8 +48,10 @@ source /usr/local/bin/virtualenvwrapper.sh
 #-------------------------------------------------------------------------------
 # Setup a nice terminal prompt
 #-------------------------------------------------------------------------------
-# Load up handy-dandy git prompt functions
-source /Library/Developer/CommandLineTools/usr/share/git-core/git-prompt.sh
+if [ -f /Applications/Xcode.app/Contents/Developer/usr/share/git-core/git-completion.bash ]; then
+    . /Applications/Xcode.app/Contents/Developer/usr/share/git-core/git-completion.bash
+fi
+source /Applications/Xcode.app/Contents/Developer/usr/share/git-core/git-prompt.sh
 export PS1="\[$(tput bold)\]\w\$(__git_ps1)\n\[$(tput setaf 1)\]> \[$(tput sgr0)\]"
 
 #-------------------------------------------------------------------------------
@@ -66,3 +70,9 @@ fi
 export PYENV_ROOT=/usr/local/opt/pyenv
 if which pyenv > /dev/null; then eval "$(pyenv init -)"; fi
 if which pyenv-virtualenv-init > /dev/null; then eval "$(pyenv virtualenv-init -)"; fi
+
+# The next line updates PATH for the Google Cloud SDK.
+source '/Users/ahuynh/google-cloud-sdk/path.bash.inc'
+
+# The next line enables shell command completion for gcloud.
+source '/Users/ahuynh/google-cloud-sdk/completion.bash.inc'
