@@ -66,13 +66,22 @@ if [ -f ~/.git-completion.bash ]; then
     . ~/.git-completion.bash
 fi
 
-# Pyenv autoccompletion
+# Pyenv setup and autocompletion
 export PYENV_ROOT=/usr/local/opt/pyenv
 if which pyenv > /dev/null; then eval "$(pyenv init -)"; fi
 if which pyenv-virtualenv-init > /dev/null; then eval "$(pyenv virtualenv-init -)"; fi
 
+# Scalaenv setup and autocompleteion
+export SCALAENV_ROOT=/usr/local/var/scalaenv
+eval "$(scalaenv init -)"
+
+# -----------------------------------------------------------------------------
+# Google Cloud Setup
+# -----------------------------------------------------------------------------
+
 # The next line updates PATH for the Google Cloud SDK.
-source '/Users/ahuynh/google-cloud-sdk/path.bash.inc'
+source '~/google-cloud-sdk/path.bash.inc'
 
 # The next line enables shell command completion for gcloud.
-source '/Users/ahuynh/google-cloud-sdk/completion.bash.inc'
+source '~/google-cloud-sdk/completion.bash.inc'
+
