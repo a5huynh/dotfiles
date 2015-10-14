@@ -28,6 +28,7 @@ fi
 # If we have the sdcv tool installed, create a "define" function to make
 # calling it super easy
 #-------------------------------------------------------------------------------
+export STARDICT_DATA_DIR="/usr/local/share/stardict";
 define () {
     if command -v sdcv > /dev/null; then
         # -0 show UTF-8 output
