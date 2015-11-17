@@ -51,3 +51,8 @@ build/
 *.mode1v3
 *.mode2v3
 xcuserdata/
+
+# (py|rb)env files
+.ruby-version
+.python-version
+
