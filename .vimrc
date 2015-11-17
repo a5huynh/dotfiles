@@ -41,6 +41,9 @@ set number
 " This shows what you are typing as a command.
 set showcmd
 
+set incsearch
+set hlsearch
+
 " Turn off annoying error bells
 set noerrorbells
 set visualbell
