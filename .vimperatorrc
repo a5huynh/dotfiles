@@ -2,5 +2,5 @@ autocmd LocationChange .*                       js modes.passAllKeys = false
 autocmd LocationChange docs\\.google\\.com      js modes.passAllKeys = true
 autocmd LocationChange mail\\.google\\.com      js modes.passAllKeys = true
 autocmd LocationChange .*\\.reddit\\.com        js modes.passAllKeys = true
-autocmd LocationCHange trello\\.com             js modes.passAllKeys = true
+autocmd LocationChange trello\\.com             js modes.passAllKeys = true
 
