@@ -47,6 +47,11 @@ export PROJECT_HOME=$HOME/Documents/Current\ Work
 source /usr/local/bin/virtualenvwrapper.sh
 
 #-------------------------------------------------------------------------------
+# Setup rbenv
+#-------------------------------------------------------------------------------
+eval "$(rbenv init -)";
+
+#-------------------------------------------------------------------------------
 # Setup a nice terminal prompt
 #-------------------------------------------------------------------------------
 if [ -f /Applications/Xcode.app/Contents/Developer/usr/share/git-core/git-completion.bash ]; then
