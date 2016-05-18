@@ -53,8 +53,8 @@ set t_vb=
 " Needed for syntax highlighting and stuff
 filetype on
 filetype plugin on
-syntax on
-colorscheme solarized
+syntax enable 
+colorscheme vividchalk 
 set grepprg=grep\ -nH\ $*
 
 set t_Co=256
