@@ -43,7 +43,6 @@ define () {
 # Setup Python & virtualenvwrapper
 #-------------------------------------------------------------------------------
 export WORKON_HOME=~/.pyenvs
-export PROJECT_HOME=$HOME/Documents/Current\ Work
 source /usr/local/bin/virtualenvwrapper.sh
 
 #-------------------------------------------------------------------------------
