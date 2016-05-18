@@ -72,7 +72,7 @@ if [ -f ~/.git-completion.bash ]; then
 fi
 
 # Pyenv setup and autocompletion
-export PYENV_ROOT=/usr/local/opt/pyenv
+export PYENV_ROOT=~/.pyenvs
 if which pyenv > /dev/null; then eval "$(pyenv init -)"; fi
 if which pyenv-virtualenv-init > /dev/null; then eval "$(pyenv virtualenv-init -)"; fi
 
