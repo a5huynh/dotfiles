@@ -55,18 +55,22 @@ eval "$(rbenv init -)";
 #-------------------------------------------------------------------------------
 # Setup a nice terminal prompt
 #-------------------------------------------------------------------------------
-if [ -f /Applications/Xcode.app/Contents/Developer/usr/share/git-core/git-completion.bash ]; then
-    . /Applications/Xcode.app/Contents/Developer/usr/share/git-core/git-completion.bash
-fi
-source /Applications/Xcode.app/Contents/Developer/usr/share/git-core/git-prompt.sh
 export PS1="\[$(tput bold)\]\w\$(__git_ps1)\n\[$(tput setaf 1)\]> \[$(tput sgr0)\]"
 
 #-------------------------------------------------------------------------------
 # Setup some nice autocompletion functionality
 #-------------------------------------------------------------------------------
 
+# Setup a git completion on OSX 
+if [ -f /Applications/Xcode.app/Contents/Developer/usr/share/git-core/git-completion.bash ]; then
+    . /Applications/Xcode.app/Contents/Developer/usr/share/git-core/git-completion.bash
+    source /Applications/Xcode.app/Contents/Developer/usr/share/git-core/git-prompt.sh
+fi
+
 # SSH Config tab completion
-complete -W "$(grep '^Host' ~/.ssh/config | sort -u | sed s/Host\ //)" ssh scp sftp
+if [ -f $HOME/.ssh/config ]; then
+    complete -W "$(grep '^Host' ~/.ssh/config | sort -u | sed s/Host\ //)" ssh scp sftp
+fi
 
 # Git autocompletetion
 if [ -f ~/.git-completion.bash ]; then
@@ -79,6 +83,9 @@ if which pyenv > /dev/null; then eval "$(pyenv init -)"; fi
 if which pyenv-virtualenv-init > /dev/null; then eval "$(pyenv virtualenv-init -)"; fi
 
 # Scalaenv setup and autocompleteion
+if [[ "$PATH" != *"~/.scalaenv/bin"* ]]; then
+    export PATH="~/.scalaenv/bin:$PATH"
+fi
 export SCALAENV_ROOT=/usr/local/var/scalaenv
 eval "$(scalaenv init -)"
 
@@ -87,8 +94,9 @@ eval "$(scalaenv init -)"
 # -----------------------------------------------------------------------------
 
 # The next line updates PATH for the Google Cloud SDK.
-source $HOME/google-cloud-sdk/path.bash.inc
-
-# The next line enables shell command completion for gcloud.
-source $HOME/google-cloud-sdk/completion.bash.inc
+if [ -f $HOME/google-cloud-sdk ]; then
+    source $HOME/google-cloud-sdk/path.bash.inc
+    # The next line enables shell command completion for gcloud.
+    source $HOME/google-cloud-sdk/completion.bash.inc
+fi
 
