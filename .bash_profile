@@ -6,7 +6,6 @@ export EDITOR=vim
 #--------------------------------------------------------------------------------
 alias g='git'
 alias d='docker'
-alias love="/Applications/love.app/Contents/MacOS/love"
 alias ll="ls -Alhtr"
 alias cl='clear'
 
@@ -21,11 +20,6 @@ export GOPATH="/usr/local/golang"
 # Make sure gopath is in our path
 if [[ "$PATH" != *"/usr/local/golang"* ]]; then
     export PATH="/usr/local/golang/bin:$PATH"
-fi
-
-# Make sure texlive programs are accessible in the terminal
-if [[ "$PATH" != *"/Library/TeX/Distributions/Programs/texbin"* ]]; then
-    export PATH="/Library/TeX/Distributions/Programs/texbin:$PATH"
 fi
 
 #-------------------------------------------------------------------------------
@@ -50,12 +44,6 @@ export PS1="\[$(tput bold)\]\w\$(__git_ps1)\n\[$(tput setaf 1)\]> \[$(tput sgr0)
 #-------------------------------------------------------------------------------
 # Setup some nice autocompletion functionality
 #-------------------------------------------------------------------------------
-
-# Setup a git completion on OSX 
-if [ -f /Applications/Xcode.app/Contents/Developer/usr/share/git-core/git-completion.bash ]; then
-    . /Applications/Xcode.app/Contents/Developer/usr/share/git-core/git-completion.bash
-    source /Applications/Xcode.app/Contents/Developer/usr/share/git-core/git-prompt.sh
-fi
 
 # SSH Config tab completion
 if [ -f $HOME/.ssh/config ]; then
