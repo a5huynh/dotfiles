@@ -89,9 +89,3 @@ if [ -f $HOME/google-cloud-sdk ]; then
     # The next line enables shell command completion for gcloud.
     source $HOME/google-cloud-sdk/completion.bash.inc
 fi
-#------------------------------------------------------------------------------
-# Setup and install tmux plugins on a new computer 
-#------------------------------------------------------------------------------
-if "test ! -d ~/.tmux/plugins/tpm" \
-    "run 'git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm && ~/.tmux/plugins/tpm/bin/install_plugins'"
-
