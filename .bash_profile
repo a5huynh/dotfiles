@@ -17,6 +17,7 @@ fi
 
 # Setup GOPATH
 export GOPATH="/usr/local/golang"
+
 # Make sure gopath is in our path
 if [[ "$PATH" != *"/usr/local/golang"* ]]; then
     export PATH="/usr/local/golang/bin:$PATH"
@@ -41,18 +42,6 @@ define () {
         echo "You need to install sdcv."
     fi
 }
-
-#-------------------------------------------------------------------------------
-# Setup Python & virtualenvwrapper
-#-------------------------------------------------------------------------------
-export WORKON_HOME=~/.pyenvs
-source /usr/local/bin/virtualenvwrapper.sh
-
-#-------------------------------------------------------------------------------
-# Setup rbenv
-#-------------------------------------------------------------------------------
-eval "$(rbenv init -)";
-
 #-------------------------------------------------------------------------------
 # Setup a nice terminal prompt
 #-------------------------------------------------------------------------------
