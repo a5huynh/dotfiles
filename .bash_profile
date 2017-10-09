@@ -71,21 +71,3 @@ fi
 export PYENV_ROOT=~/.pyenv
 if which pyenv > /dev/null; then eval "$(pyenv init -)"; fi
 if which pyenv-virtualenv-init > /dev/null; then eval "$(pyenv virtualenv-init -)"; fi
-
-# Scalaenv setup and autocompleteion
-if [[ "$PATH" != *"~/.scalaenv/bin"* ]]; then
-    export PATH="~/.scalaenv/bin:$PATH"
-fi
-export SCALAENV_ROOT=/usr/local/var/scalaenv
-eval "$(scalaenv init -)"
-
-# -----------------------------------------------------------------------------
-# Google Cloud Setup
-# -----------------------------------------------------------------------------
-
-# The next line updates PATH for the Google Cloud SDK.
-if [ -f $HOME/google-cloud-sdk ]; then
-    source $HOME/google-cloud-sdk/path.bash.inc
-    # The next line enables shell command completion for gcloud.
-    source $HOME/google-cloud-sdk/completion.bash.inc
-fi
