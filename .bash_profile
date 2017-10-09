@@ -8,6 +8,7 @@ alias g='git'
 alias d='docker'
 alias love="/Applications/love.app/Contents/MacOS/love"
 alias ll="ls -Alhtr"
+alias cl='clear'
 
 # Make sure all our local bin folders in the path
 if [[ "$PATH" != *"~/bin"* ]]; then
