@@ -8,6 +8,7 @@ alias g='git'
 alias d='docker'
 alias love="/Applications/love.app/Contents/MacOS/love"
 alias ll="ls -Alhtr"
+alias cl='clear'
 
 # Make sure all our local bin folders in the path
 if [[ "$PATH" != *"~/bin"* ]]; then
@@ -16,6 +17,7 @@ fi
 
 # Setup GOPATH
 export GOPATH="/usr/local/golang"
+
 # Make sure gopath is in our path
 if [[ "$PATH" != *"/usr/local/golang"* ]]; then
     export PATH="/usr/local/golang/bin:$PATH"
@@ -40,18 +42,6 @@ define () {
         echo "You need to install sdcv."
     fi
 }
-
-#-------------------------------------------------------------------------------
-# Setup Python & virtualenvwrapper
-#-------------------------------------------------------------------------------
-export WORKON_HOME=~/.pyenvs
-source /usr/local/bin/virtualenvwrapper.sh
-
-#-------------------------------------------------------------------------------
-# Setup rbenv
-#-------------------------------------------------------------------------------
-eval "$(rbenv init -)";
-
 #-------------------------------------------------------------------------------
 # Setup a nice terminal prompt
 #-------------------------------------------------------------------------------
@@ -99,4 +89,9 @@ if [ -f $HOME/google-cloud-sdk ]; then
     # The next line enables shell command completion for gcloud.
     source $HOME/google-cloud-sdk/completion.bash.inc
 fi
+#------------------------------------------------------------------------------
+# Setup and install tmux plugins on a new computer 
+#------------------------------------------------------------------------------
+if "test ! -d ~/.tmux/plugins/tpm" \
+    "run 'git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm && ~/.tmux/plugins/tpm/bin/install_plugins'"
 
