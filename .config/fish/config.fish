@@ -1,6 +1,6 @@
 # Theme based on Monokai
 set SCHEME_PRIMARY ff6188       # Red-ish
-set SCHEME_SECONDARY fc9867     # Orangr-ish
+set SCHEME_SECONDARY fc9867     # Orange-ish
 set SCHEME_WARNING ffd866       # Yellow-ish
 set SCHEME_SUCCESS a9dc76       # Green-ish
 set SCHEME_INFO 78dce8          # Blue-ish
