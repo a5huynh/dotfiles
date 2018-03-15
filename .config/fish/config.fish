@@ -17,3 +17,12 @@ set -g fish_user_paths "/usr/local/bin" $fish_user_paths;
 # Setup pyenv & pyenv-virtualenv
 status --is-interactive; and . (pyenv init -|psub)
 status --is-interactive; and . (pyenv virtualenv-init -|psub)
+
+# The next line updates PATH for the Google Cloud SDK.
+if [ -f "$HOME/google-cloud-sdk/path.fish.inc" ];
+    if type source > /dev/null;
+        source "$HOME/google-cloud-sdk/path.fish.inc";
+    else;
+        . "$HOME/google-cloud-sdk/path.fish.inc";
+    end;
+end
