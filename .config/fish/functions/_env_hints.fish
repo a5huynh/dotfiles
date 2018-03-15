@@ -10,7 +10,7 @@ function _env_hints --description "Prompt hits for git, pyenv etc."
     # Current Git branch
     if git_is_repo
         set --local br_name (git_branch_name)
-        set --local git_status (git_ahead)
+        set --local git_status (git_ahead '+' '-' '±' '✓')
 
         __print_color $SCHEME_INFO "$lambda $br_name "
         __print_color $SCHEME_GREY "($git_status)"
