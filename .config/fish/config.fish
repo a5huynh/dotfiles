@@ -11,8 +11,10 @@ set SCHEME_GREY 666666          # Darkish grey
 set fish_color_search_match $SCHEME_GREY
 set fish_greeting ""
 
-# Setup /usr/local/bin before /usr/bin
+# Setup /usr/local/bin before /usr/bin.
 set -g fish_user_paths "/usr/local/bin" $fish_user_paths;
+# Fix for `gettext` not found for pyenv.
+set -g fish_user_paths "/usr/local/opt/gettext/bin" $fish_user_paths;
 
 # Setup pyenv & pyenv-virtualenv
 status --is-interactive; and source (pyenv init -|psub)
