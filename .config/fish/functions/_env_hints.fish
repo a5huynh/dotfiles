@@ -14,7 +14,10 @@ function _env_hints --description "Prompt hits for git, pyenv etc."
 
         __print_color $SCHEME_INFO "$lambda $br_name "
         __print_color $SCHEME_GREY "($git_status)"
-        __print_color $SCHEME_GREY " $bullet "
+        # Only print bullet if there is virtualenv
+        if set --query VIRTUAL_ENV
+            __print_color $SCHEME_GREY " $bullet "
+        end
     end
 
     #
@@ -27,7 +30,6 @@ function _env_hints --description "Prompt hits for git, pyenv etc."
 
         __print_color $SCHEME_INFO "$snake  $PYENV_VERSION "
         __print_color $SCHEME_GREY "($py_version)"
-        __print_color $SCHEME_GREY " $bullet "
     end
 
     # Add a newline after the env hints
