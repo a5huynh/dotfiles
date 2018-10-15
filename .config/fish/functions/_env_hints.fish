@@ -21,7 +21,7 @@ function _env_hints --description "Prompt hits for git, pyenv etc."
     # Are we in a virtualenv?
     if set --query VIRTUAL_ENV
         # Get the version via pyenv.
-        set --global --export PYENV_VERSION (expr (pyenv version) : '\([^ ]*\)')
+        set --global --export PYENV_VERSION (pyenv version-name)
         # Determine the python version in the pyenv
         set --local py_version (python --version)
 
