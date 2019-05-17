@@ -6,7 +6,7 @@ function fish_prompt --description "Customize terminal prompt"
     #
     # User
     set --local user (id -un $USER)
-    __print_color $SCHEME_PRIMARY "$user"
+    __print_color $SCHEME_PRIMARY "┌ $user"
 
     #
     # Hostname
@@ -21,5 +21,5 @@ function fish_prompt --description "Customize terminal prompt"
     __print_color $SCHEME_PURP "$pwd_string"
 
     echo ""
-    __print_color $SCHEME_PRIMARY "> "
+    __print_color $SCHEME_PRIMARY "└▶ "
 end
