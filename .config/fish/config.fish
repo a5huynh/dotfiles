@@ -16,9 +16,19 @@ status --is-interactive; and source (pyenv init -|psub)
 status --is-interactive; and source (pyenv virtualenv-init -|psub)
 
 # Setup /usr/local/bin before /usr/bin.
-set -g fish_user_paths "/usr/local/bin" $fish_user_paths;
-# Fix for `gettext` not found for pyenv.
-set -g fish_user_paths "/usr/local/opt/gettext/bin" $fish_user_paths;
+if not contains "/usr/local/bin" $fish_user_paths
+    set -g fish_user_paths "/usr/local/bin" $fish_user_paths;
+end
+
+# Setup /usr/local/sbin
+if not contains "/usr/local/sbin" $fish_user_paths
+    set -g fish_user_paths "/usr/local/sbin" $fish_user_paths;
+end
+
+# Fix for `gettext` source ~/.config/fish/config.fish found for pyenv.
+if not contains "/usr/local/opt/gettext/bin" $fish_user_paths
+    set -g fish_user_paths "/usr/local/opt/gettext/bin" $fish_user_paths;
+end
 
 # The next line updates PATH for the Google Cloud SDK.
 if [ -f "$HOME/google-cloud-sdk/path.fish.inc" ];
