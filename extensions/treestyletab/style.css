@@ -1,6 +1,15 @@
+/* Setup variables */
+
+:root {
+    --tab-highlighter-size: 4px;
+    --tab-highlighter: rgb(35, 205, 179);
+}
+
+
 /**
 * Better styling for the Firefox Tree Style Tab extension.
 */
+
 .favicon {
     background: white;
     border-radius: 4px;
@@ -10,12 +19,14 @@
     border-radius: 4px;
 }
 
+
 /*
     As little space before the tab name as possible.
     The fold/unfold icon is not affected.
 
     !important is required when there are enough tabs to cause a scrollbar
 */
+
 .tab {
     background-color: #2c2525;
     border: 0;
@@ -25,7 +36,6 @@
 
 .tab.active {
     background-color: black;
-    box-shadow: rgb(35, 205, 179) 4px 0px inset;
 }
 
 .tab .label {
@@ -34,7 +44,7 @@
 }
 
 .tab:hover {
-    box-shadow: rgb(35, 205, 179) 4px 0px inset;
+    box-shadow: inset 4px 0px var(--tab-highlighter);
 }
 
 .tab:hover .label {
@@ -53,7 +63,9 @@
     display: none;
 }
 
+
 /** Change active folder icon */
+
 .tab .twisty,
 .tab .counter {
     color: white;
@@ -68,7 +80,9 @@
     color: white !important;
 }
 
+
 /* Remove new tab button */
+
 .newtab-button {
     display: none;
 }
@@ -77,23 +91,25 @@
     background-color: #2c2525 !important;
 }
 
+
 /** This colors a tab based on its container's color. */
+
 .contextual-identity-marker {
     position: absolute !important;
     pointer-events: none;
     z-index: 0;
-
     bottom: 0 !important;
     left: 0 !important;
     right: 0 !important;
     top: 0 !important;
-
     width: unset !important;
     height: unset !important;
     opacity: 0.5;
 }
 
+
 /* Only show close button when hovering over the tab */
+
 .closebox::after {
     content: "⨉";
     color: white;
