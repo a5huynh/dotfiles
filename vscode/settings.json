@@ -1,0 +1,70 @@
+{
+    "editor.fontFamily": "Fira Code",
+    "editor.fontLigatures": true,
+    "editor.renderWhitespace": "boundary",
+    "editor.cursorStyle": "line",
+    "editor.rulers": [ 75, 85 ],
+    "files.trimTrailingWhitespace": true,
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/*.pyc": true,
+        "**/__pycache__": true,
+        "**/.ipynb_checkpoints": true,
+        "**/*.lock": true,
+        "**/.coverage": true,
+        ".sass-cache": true,
+        ".vscode": true,
+        "node_modules": true,
+        "package-lock.json": true
+    },
+    "markdown.preview.scrollPreviewWithEditor": false,
+    "markdown.preview.markEditorSelection": false,
+    "terminal.integrated.shell.osx": "/usr/local/bin/fish",
+    "workbench.editor.enablePreview": false,
+    "workbench.editor.enablePreviewFromQuickOpen": false,
+    "window.zoomLevel": -2,
+    "extensions.ignoreRecommendations": false,
+    "workbench.colorTheme": "Monokai Pro (Filter Ristretto)",
+    "spellright.language": "en",
+    "workbench.panel.location": "bottom",
+    "python.linting.enabledWithoutWorkspace": false,
+    "java.errors.incompleteClasspath.severity": "ignore",
+    "arduino.additionalUrls": [
+        "https://redbear.github.io/arduino/package_redbear_nRF5x_index.json",
+        "http://arduino.esp8266.com/stable/package_esp8266com_index.json"
+    ],
+    "[rust]": {},
+    "files.associations": {
+        "*.inc": "z80-asm"
+    },
+    "breadcrumbs.enabled": true,
+    "workbench.sideBar.location": "left",
+    "typescript.updateImportsOnFileMove.enabled": "always",
+    "python.venvPath": "~/.pyenv",
+    "python.pythonPath": "/usr/local/bin/python3",
+    "editor.suggestSelection": "first",
+    "vsintellicode.modify.editor.suggestSelection": "automaticallyOverrodeDefaultValue",
+    "workbench.iconTheme": "material-icon-theme",
+    "[ron]": {},
+    "python.jediEnabled": false,
+    "rust-client.rustupPath": "/Users/andrewhuynh/.cargo/bin/rustup",
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "HookyQR.beautify"
+    },
+    "workbench.fontAliasing": "antialiased",
+    "C_Cpp.updateChannel": "Insiders",
+    "terminal.external.osxExec": "iTerm.app",
+    "terminal.integrated.fontWeightBold": "normal",
+    "terminal.integrated.lineHeight": 1.25,
+    "workbench.panel.defaultLocation": "right",
+    "[html]": {
+        "editor.defaultFormatter": "HookyQR.beautify"
+    }
+}
