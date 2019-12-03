@@ -30,6 +30,11 @@ if not contains "/usr/local/opt/gettext/bin" $fish_user_paths
     set -U fish_user_paths "/usr/local/opt/gettext/bin" $fish_user_paths;
 end
 
+
+if not contains "$HOME/.poetry/bin" $fish_user_paths
+    set -U fish_user_paths "$HOME/.poetry/bin" $fish_user_paths
+end
+
 # The next line updates PATH for the Google Cloud SDK.
 if [ -f "$HOME/google-cloud-sdk/path.fish.inc" ];
     if type source > /dev/null;
