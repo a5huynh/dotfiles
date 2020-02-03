@@ -1,5 +1,4 @@
 /* Setup variables */
-
 :root {
     --tab-highlighter-size: 4px;
     --tab-highlighter: rgb(35, 205, 179);
@@ -65,15 +64,18 @@
 
 
 /** Change active folder icon */
-
-.tab .twisty,
-.tab .counter {
-    color: white;
+.tab .twisty {
+    /* The twisty icon is an SVG whose color is controlled by `--tab-text`
+     * For reference: https://github.com/piroor/treestyletab/blob/a6662b6d281ebf30508eb34158365e0501d57f0d/webextensions/sidebar/styles/twisty.css
+     */
+    --tab-text: white;
+    margin-left: 4px;
     margin-right: 4px;
 }
 
 .tab .counter {
-    margin-right: 12px;
+    color: var(--tab-highlighter);
+    margin-right: 8px;
 }
 
 .tab.active .label {
