@@ -10,9 +10,12 @@
 	editor = ~/bin/subl --wait
 	excludesfile = ~/.gitignore_global
 [alias]
-    co = checkout
-	stat = status
+	br = branch
+	co = checkout
 	lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%C(bold blue)<%an>%Creset' --abbrev-commit
+	rm = branch -D
+	st = status
+	stat = status
 [difftool "sourcetree"]
 	cmd = opendiff \"$LOCAL\" \"$REMOTE\"
 	path = 
