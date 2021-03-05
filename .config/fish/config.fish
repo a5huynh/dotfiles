@@ -8,8 +8,15 @@ set SCHEME_PURP ab9df2          # Purple-ish
 # Assumes a very dark background color.
 set SCHEME_GREY 666666          # Darkish grey
 
+# Setup pyenv paths
+set -g PYENV_ROOT "$HOME/.pyenv"
+
 set fish_color_search_match $SCHEME_GREY
 set fish_greeting ""
+
+if not contains "$HOME/.pyenv/bin" $fish_user_paths
+    set -U fish_user_paths "$HOME/.pyenv/bin" $fish_user_paths;
+end
 
 # Setup pyenv & pyenv-virtualenv
 status --is-interactive; and source (pyenv init -|psub)

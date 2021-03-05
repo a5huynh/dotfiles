@@ -26,7 +26,7 @@ function _env_hints --description "Prompt hits for git, pyenv etc."
         # Get the version via pyenv.
         set --global --export PYENV_VERSION (pyenv version-name)
         # Determine the python version in the pyenv
-        set --local py_version (python --version ^&1)
+        set --local py_version (python --version 2>&1)
 
         __print_color $SCHEME_INFO "$snake  $PYENV_VERSION "
         __print_color $SCHEME_GREY "($py_version)"
