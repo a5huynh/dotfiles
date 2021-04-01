@@ -18,9 +18,10 @@ if not contains "$HOME/.pyenv/bin" $fish_user_paths
     set -U fish_user_paths "$HOME/.pyenv/bin" $fish_user_paths;
 end
 
-# Setup pyenv & pyenv-virtualenv
-status --is-interactive; and source (pyenv init -|psub)
-status --is-interactive; and source (pyenv virtualenv-init -|psub)
+# Setup /opt/homebrew/bin
+if not contains "/opt/homebrew/bin" $fish_user_paths
+    set -U fish_user_paths "/opt/homebrew/bin" $fish_user_paths;
+end
 
 # Setup /usr/local/bin before /usr/bin.
 if not contains "/usr/local/bin" $fish_user_paths
@@ -31,6 +32,10 @@ end
 if not contains "/usr/local/sbin" $fish_user_paths
     set -U fish_user_paths "/usr/local/sbin" $fish_user_paths;
 end
+
+# Setup pyenv & pyenv-virtualenv
+status --is-interactive; and source (pyenv init -|psub)
+status --is-interactive; and source (pyenv virtualenv-init -|psub)
 
 # Fix for `gettext` source ~/.config/fish/config.fish found for pyenv.
 if not contains "/usr/local/opt/gettext/bin" $fish_user_paths
@@ -61,6 +66,7 @@ if not functions -q fisher
     curl https://git.io/fisher --create-dirs -sLo $XDG_CONFIG_HOME/fish/functions/fisher.fish
     fish -c fisher
 end
+
 # Colors:
 set fish_color_normal F8F8F2 # the default color
 set fish_color_command F92672 # the color for commands
@@ -82,6 +88,7 @@ set fish_pager_color_completion 75715E # the color of the completion itself
 set fish_pager_color_description 49483E # the color of the completion description
 set fish_pager_color_progress F8F8F2 # the color of the progress bar at the bottom left corner
 set fish_pager_color_secondary F8F8F2 # the background color of the every second completion
+
 # tabtab source for packages
 # uninstall by removing these lines
 [ -f ~/.config/tabtab/__tabtab.fish ]; and . ~/.config/tabtab/__tabtab.fish; or true
