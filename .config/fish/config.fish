@@ -33,9 +33,18 @@ if not contains "/usr/local/sbin" $fish_user_paths
     set -U fish_user_paths "/usr/local/sbin" $fish_user_paths;
 end
 
+# Setup rust-lang
+if not contains "$HOME/.cargo/bin" $fish_user_paths
+    set -U fish_user_paths "$HOME/.cargo/bin" $fish_user_paths
+end 
+
 # Setup pyenv & pyenv-virtualenv
-status --is-interactive; and source (pyenv init -|psub)
+status is-login; and pyenv init --path | source
+pyenv init - | source
 status --is-interactive; and source (pyenv virtualenv-init -|psub)
+
+# Setup rbenv
+status --is-interactive; and source (rbenv init -|psub)
 
 # Fix for `gettext` source ~/.config/fish/config.fish found for pyenv.
 if not contains "/usr/local/opt/gettext/bin" $fish_user_paths

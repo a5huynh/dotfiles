@@ -1,7 +1,5 @@
 edc/bass
-fishpkg/fish-git-util
 fishpkg/fish-humanize-duration
-fishpkg/fish-pwd-info
-fishpkg/fish-pwd-is-home
 jethrokuan/fzf
 jorgebucaran/fish-nvm
+arbourd/fish-git-util

@@ -1,0 +1,28 @@
+# This file contains fish universal variable definitions.
+# VERSION: 3.0
+SETUVAR FZF_DEFAULT_OPTS:\x2d\x2dheight\x2040\x25
+SETUVAR FZF_DISABLE_KEYBINDINGS:0
+SETUVAR FZF_LEGACY_KEYBINDINGS:1
+SETUVAR FZF_PREVIEW_DIR_CMD:ls
+SETUVAR FZF_PREVIEW_FILE_CMD:head\x20\x2dn\x2010
+SETUVAR FZF_TMUX_HEIGHT:40\x25
+SETUVAR __fish_initialized:3100
+SETUVAR _fisher_edc_2F_bass_files:/Users/a5huynh/\x2econfig/fish/functions/__bass\x2epy\x1e/Users/a5huynh/\x2econfig/fish/functions/bass\x2efish
+SETUVAR _fisher_fishpkg_2F_fish_2D_humanize_2D_duration_files:/Users/a5huynh/\x2econfig/fish/functions/humantime\x2efish
+SETUVAR _fisher_jethrokuan_2F_fzf_files:/Users/a5huynh/\x2econfig/fish/functions/__fzf_cd\x2efish\x1e/Users/a5huynh/\x2econfig/fish/functions/__fzf_complete\x2efish\x1e/Users/a5huynh/\x2econfig/fish/functions/__fzf_complete_preview\x2efish\x1e/Users/a5huynh/\x2econfig/fish/functions/__fzf_find_file\x2efish\x1e/Users/a5huynh/\x2econfig/fish/functions/__fzf_get_dir\x2efish\x1e/Users/a5huynh/\x2econfig/fish/functions/__fzf_open\x2efish\x1e/Users/a5huynh/\x2econfig/fish/functions/__fzf_parse_commandline\x2efish\x1e/Users/a5huynh/\x2econfig/fish/functions/__fzf_reverse_isearch\x2efish\x1e/Users/a5huynh/\x2econfig/fish/functions/__fzfcmd\x2efish\x1e/Users/a5huynh/\x2econfig/fish/conf\x2ed/fzf\x2efish
+SETUVAR _fisher_jorgebucaran_2F_fish_2D_nvm_files:/Users/a5huynh/\x2econfig/fish/functions/_nvm_index_update\x2efish\x1e/Users/a5huynh/\x2econfig/fish/functions/_nvm_list\x2efish\x1e/Users/a5huynh/\x2econfig/fish/functions/_nvm_version_activate\x2efish\x1e/Users/a5huynh/\x2econfig/fish/functions/_nvm_version_deactivate\x2efish\x1e/Users/a5huynh/\x2econfig/fish/functions/nvm\x2efish\x1e/Users/a5huynh/\x2econfig/fish/conf\x2ed/nvm\x2efish\x1e/Users/a5huynh/\x2econfig/fish/completions/nvm\x2efish
+SETUVAR _fisher_plugins:edc/bass\x1efishpkg/fish\x2dhumanize\x2dduration\x1ejethrokuan/fzf\x1ejorgebucaran/fish\x2dnvm\x1earbourd/fish\x2dgit\x2dutil
+SETUVAR fish_color_autosuggestion:555\x1ebrblack
+SETUVAR fish_color_cancel:\x2dr
+SETUVAR fish_color_cwd_root:red
+SETUVAR fish_color_history_current:\x2d\x2dbold
+SETUVAR fish_color_host:normal
+SETUVAR fish_color_host_remote:yellow
+SETUVAR fish_color_selection:white\x1e\x2d\x2dbold\x1e\x2d\x2dbackground\x3dbrblack
+SETUVAR fish_color_status:red
+SETUVAR fish_color_user:brgreen
+SETUVAR fish_color_valid_path:\x2d\x2dunderline
+SETUVAR fish_key_bindings:fish_default_key_bindings
+SETUVAR fish_user_paths:/Users/a5huynh/\x2ecargo/bin\x1e/opt/homebrew/bin\x1e/Users/a5huynh/\x2epoetry/bin\x1e/Users/a5huynh/\x2eebcli\x2dvirtual\x2denv/executables\x1e/usr/local/opt/gettext/bin\x1e/usr/local/sbin\x1e/usr/local/bin\x1e/Users/a5huynh/\x2epyenv/bin
+SETUVAR nvm_data:/Users/a5huynh/\x2elocal/share/nvm
+SETUVAR nvm_mirror:https\x3a//nodejs\x2eorg/dist
