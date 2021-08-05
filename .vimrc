@@ -53,9 +53,10 @@ set t_vb=
 " Needed for syntax highlighting and stuff
 filetype on
 filetype plugin on
-syntax enable 
-colorscheme vividchalk 
+syntax enable
+colorscheme vividchalk
 set grepprg=grep\ -nH\ $*
+au BufNewFile,BufFilePre,BufRead *.md set filetype=markdown
 
 set t_Co=256
 set background=dark
