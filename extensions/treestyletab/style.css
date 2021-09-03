@@ -1,9 +1,9 @@
 /* Setup variables */
+
 :root {
     --tab-highlighter-size: 4px;
     --tab-highlighter: rgb(35, 205, 179);
 }
-
 
 /**
 * Better styling for the Firefox Tree Style Tab extension.
@@ -18,70 +18,71 @@
     border-radius: 4px;
 }
 
-
 /*
-    As little space before the tab name as possible.
-    The fold/unfold icon is not affected.
-
-    !important is required when there are enough tabs to cause a scrollbar
+ * As little space before the tab name as possible.
+ * The fold/unfold icon is not affected.
+ *
+ * !important is required when there are enough tabs to cause a scrollbar
 */
 
-.tab {
-    background-color: #2c2525;
-    border: 0;
-    height: 32px;
+tab-item tab-item-substance {
+    --tab-size: 36px !important;
+    height: var(--tab-size);
     line-height: 1.5em;
 }
 
-.tab.active {
+tab-item-substance {
+    border: 0;
+    border-bottom: solid 1px #00000030;
+}
+
+tab-item.active {
     background-color: black;
 }
 
-.tab .label {
+tab-item .label {
     color: #766363;
     margin-left: 8px;
 }
 
-.tab:hover {
+tab-item:hover {
+    margin-left: 2px;
     box-shadow: inset 4px 0px var(--tab-highlighter);
 }
 
-.tab:hover .label {
+tab-item:hover .label {
     color: white !important;
 }
 
-.tab:hover .counter {
+tab-item:hover .counter {
     display: none;
 }
 
-.tab:not(.pinned) {
+tab-item:not(.pinned) {
     padding-left: 2px !important;
 }
 
-.tab:not(:hover) .closebox {
+tab-item:not(:hover) .closebox {
     display: none;
 }
 
-
 /** Change active folder icon */
-.tab .twisty {
-    /* The twisty icon is an SVG whose color is controlled by `--tab-text`
-     * For reference: https://github.com/piroor/treestyletab/blob/a6662b6d281ebf30508eb34158365e0501d57f0d/webextensions/sidebar/styles/twisty.css
-     */
+
+tab-item .twisty {
     --tab-text: white;
     margin-left: 4px;
     margin-right: 4px;
 }
 
-.tab .counter {
+tab-item .counter {
     color: var(--tab-highlighter);
     margin-right: 8px;
+    font-family: Monaco;
 }
 
-.tab.active .label {
+tab-item.active .label {
     color: white !important;
 }
-
 
 /* Remove new tab button */
 
@@ -92,7 +93,6 @@
 #tabbar {
     background-color: #2c2525 !important;
 }
-
 
 /** This colors a tab based on its container's color. */
 
@@ -108,7 +108,6 @@
     height: unset !important;
     opacity: 0.5;
 }
-
 
 /* Only show close button when hovering over the tab */
 
