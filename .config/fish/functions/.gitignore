@@ -4,4 +4,7 @@
 !000-env.fish
 !fish_prompt.fish
 !fisher.fish
+!git_ahead.fish
+!git_branch_name.fish
+!git_is_repo.fish
 !lsd.fish
