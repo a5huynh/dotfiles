@@ -10,9 +10,9 @@ function fish_prompt --description "Customize terminal prompt"
 
     #
     # Hostname
-    set --local host_name (hostname -s)
-    __print_color $SCHEME_GREY " at "
-    __print_color $SCHEME_SECONDARY "$host_name"
+    # set --local host_name (hostname -s)
+    # __print_color $SCHEME_GREY " at "
+    # __print_color $SCHEME_SECONDARY "$host_name"
 
     #
     # Current working directory
