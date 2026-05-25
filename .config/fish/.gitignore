@@ -1,2 +1,4 @@
 fishd.*
 fisherman
+config.fish.backup
+conf.d/fish_frozen_*.fish

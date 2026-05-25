@@ -1,7 +1,6 @@
 # OS Generated Files
 .DS_Store
 Thumbs.db
-Icon?
 
 # Matlab Generated
 *.m~
@@ -38,7 +37,6 @@ Icon?
 
 # Logs and databases
 *.log
-*.sql
 *.sqlite
 
 # XCode related files
