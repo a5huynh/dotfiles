@@ -2,7 +2,7 @@ default:
     @just --list
 
 # Symlink everything into $HOME
-install: install-fish install-vim install-tmux install-git install-bash install-vscode
+install: install-fish install-vim install-tmux install-git install-bash
 
 install-fish:
     ./scripts/setup_fish.sh
@@ -20,11 +20,6 @@ install-git:
 
 install-bash:
     @just _link "{{justfile_directory()}}/.bash_profile" "$HOME/.bash_profile"
-
-# macOS path; adjust the target if you're on Linux or Windows
-install-vscode:
-    @mkdir -p "$HOME/Library/Application Support/Code/User"
-    @just _link "{{justfile_directory()}}/vscode/settings.json" "$HOME/Library/Application Support/Code/User/settings.json"
 
 # Internal: idempotent symlink. Skips if the target already exists.
 _link source target:
