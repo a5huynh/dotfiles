@@ -1,6 +1,10 @@
 default:
     @just --list
 
+# Install everything in the Brewfile (taps, brews, casks)
+bootstrap:
+    brew bundle --file="{{justfile_directory()}}/Brewfile"
+
 # Symlink everything into $HOME
 install: install-fish install-vim install-tmux install-git install-bash install-zed
 
@@ -21,8 +25,7 @@ install-git:
 install-bash:
     @just _link "{{justfile_directory()}}/.bash_profile" "$HOME/.bash_profile"
 
-# Symlink individual files — Zed writes runtime state (conversations, prompts DB)
-# into ~/.config/zed, so we don't link the whole directory.
+# Symlink Zed config (individual files — Zed writes runtime state alongside)
 install-zed:
     @mkdir -p "$HOME/.config/zed"
     @just _link "{{justfile_directory()}}/.config/zed/settings.json" "$HOME/.config/zed/settings.json"
