@@ -8,6 +8,10 @@ set SCHEME_PURP ab9df2          # Purple-ish
 # Assumes a very dark background color.
 set SCHEME_GREY 666666          # Darkish grey
 
+# Load machine-local secrets (gitignored). Put API keys, tokens, etc. in
+# ~/.config/fish/secrets.fish — file is sourced if present, ignored if not.
+test -f $__fish_config_dir/secrets.fish; and source $__fish_config_dir/secrets.fish
+
 # Setup pyenv paths
 set -g PYENV_ROOT "$HOME/.pyenv"
 

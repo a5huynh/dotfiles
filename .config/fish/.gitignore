@@ -2,3 +2,7 @@ fishd.*
 fisherman
 config.fish.backup
 conf.d/fish_frozen_*.fish
+
+# Local secrets — API keys, tokens, anything machine-specific.
+# Sourced from config.fish if present. Never commit.
+secrets.fish
