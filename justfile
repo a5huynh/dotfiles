@@ -1,9 +1,20 @@
 default:
     @just --list
 
-# Install everything in the Brewfile (taps, brews, casks)
-bootstrap:
+# Install Homebrew (if missing) then everything in the Brewfile
+bootstrap: bootstrap-homebrew
     brew bundle --file="{{justfile_directory()}}/Brewfile"
+
+# Install Homebrew via the official installer if it's not already present
+bootstrap-homebrew:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if command -v brew &> /dev/null; then
+        echo "-> Homebrew is already installed"
+    else
+        echo "-> Installing Homebrew"
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    fi
 
 # Install fish/vim plugins (run AFTER `just install` — plugin managers read from $HOME)
 bootstrap-plugins: bootstrap-fish-plugins bootstrap-vim-plugins
