@@ -9,12 +9,10 @@ brew "fzf"
 brew "just"
 # better `ls`
 brew "lsd"
-# required for pbcopy access on macOS inside tmux
-brew "reattach-to-user-namespace"
 brew "ripgrep"
-# tabs/windows and other niceties
-brew "tmux"
 brew "wget"
+# terminal multiplexer (tmux replacement)
+brew "zellij"
 
 # -------------------------------------
 # Dev tools
