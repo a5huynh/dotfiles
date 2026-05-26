@@ -83,11 +83,14 @@ end
 
 fzf --fish | source;
 
-# Bootstrap fisherman
+# Bootstrap fisher (fish plugin manager). Just drops fisher.fish into the
+# functions dir — autoload picks it up. Don't run `fisher install` here:
+# install spawns `fish -c` subshells that re-run this block, causing recursion.
+# git.io URLs were retired in 2023.
 if not functions -q fisher
     set -q XDG_CONFIG_HOME; or set XDG_CONFIG_HOME ~/.config
-    curl https://git.io/fisher --create-dirs -sLo $XDG_CONFIG_HOME/fish/functions/fisher.fish
-    fish -c fisher
+    curl -sL --create-dirs -o $XDG_CONFIG_HOME/fish/functions/fisher.fish \
+        https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish
 end
 
 # Colors:

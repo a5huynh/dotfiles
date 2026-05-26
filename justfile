@@ -5,25 +5,36 @@ default:
 bootstrap:
     brew bundle --file="{{justfile_directory()}}/Brewfile"
 
+# Install fish/vim plugins (run AFTER `just install` — plugin managers read from $HOME)
+bootstrap-plugins: bootstrap-fish-plugins bootstrap-vim-plugins
+
+bootstrap-fish-plugins:
+    fish -c "fisher update"
+
+bootstrap-vim-plugins:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ ! -d "$HOME/.vim/bundle/Vundle.vim" ]; then
+        echo "-> cloning Vundle"
+        git clone https://github.com/VundleVim/Vundle.vim.git "$HOME/.vim/bundle/Vundle.vim"
+    fi
+    vim +PluginInstall +qall
+
 # Symlink everything into $HOME
-install: install-fish install-vim install-tmux install-git install-bash install-zed
+install: install-fish install-vim install-git install-zed
 
 install-fish:
-    ./scripts/setup_fish.sh
+    @mkdir -p "$HOME/.config"
+    @just _link "{{justfile_directory()}}/.config/fish" "$HOME/.config/fish"
 
 install-vim:
+    @mkdir -p "{{justfile_directory()}}/.vim/backup" "{{justfile_directory()}}/.vim/tmp"
     @just _link "{{justfile_directory()}}/.vimrc" "$HOME/.vimrc"
     @just _link "{{justfile_directory()}}/.vim" "$HOME/.vim"
-
-install-tmux:
-    @just _link "{{justfile_directory()}}/.tmux.conf" "$HOME/.tmux.conf"
 
 install-git:
     @just _link "{{justfile_directory()}}/.gitconfig" "$HOME/.gitconfig"
     @just _link "{{justfile_directory()}}/.gitignore_global" "$HOME/.gitignore_global"
-
-install-bash:
-    @just _link "{{justfile_directory()}}/.bash_profile" "$HOME/.bash_profile"
 
 # Symlink Zed config (individual files — Zed writes runtime state alongside)
 install-zed:
