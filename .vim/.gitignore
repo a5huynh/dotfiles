@@ -1,3 +1,6 @@
 backup/*
 bundle/*
 tmp/*
+
+# netrw's history cache — machine-specific runtime state
+.netrwhist
