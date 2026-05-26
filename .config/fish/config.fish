@@ -8,6 +8,10 @@ set SCHEME_PURP ab9df2          # Purple-ish
 # Assumes a very dark background color.
 set SCHEME_GREY 666666          # Darkish grey
 
+# Load machine-local secrets (gitignored). Put API keys, tokens, etc. in
+# ~/.config/fish/secrets.fish — file is sourced if present, ignored if not.
+test -f $__fish_config_dir/secrets.fish; and source $__fish_config_dir/secrets.fish
+
 # Setup pyenv paths
 set -g PYENV_ROOT "$HOME/.pyenv"
 
@@ -79,11 +83,14 @@ end
 
 fzf --fish | source;
 
-# Bootstrap fisherman
+# Bootstrap fisher (fish plugin manager). Just drops fisher.fish into the
+# functions dir — autoload picks it up. Don't run `fisher install` here:
+# install spawns `fish -c` subshells that re-run this block, causing recursion.
+# git.io URLs were retired in 2023.
 if not functions -q fisher
     set -q XDG_CONFIG_HOME; or set XDG_CONFIG_HOME ~/.config
-    curl https://git.io/fisher --create-dirs -sLo $XDG_CONFIG_HOME/fish/functions/fisher.fish
-    fish -c fisher
+    curl -sL --create-dirs -o $XDG_CONFIG_HOME/fish/functions/fisher.fish \
+        https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish
 end
 
 # Colors:
