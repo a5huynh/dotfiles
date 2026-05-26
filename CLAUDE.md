@@ -16,13 +16,13 @@ just install                   # symlink dotfiles into $HOME
 just bootstrap-plugins         # install fish/vim plugins
 ```
 
-Or do one tool at a time: `install-{fish,vim,git,zed}` for symlinks, `bootstrap-{fish,vim}-plugins` for plugin managers.
+Or do one tool at a time: `install-{fish,vim,git,zed,zellij}` for symlinks, `bootstrap-{fish,vim}-plugins` for plugin managers.
 
 The plugin step **must** run after `install` — fisher reads `~/.config/fish/fish_plugins` and vim reads `~/.vimrc`, both from `$HOME` (via the symlinks `install` just created). `bootstrap-vim-plugins` also clones Vundle itself if missing.
 
 All `install-*` recipes are idempotent — they **skip if the target path already exists**. `bootstrap` is also re-runnable. `bootstrap-plugins` is safe to re-run but does network I/O each time. Recipes call the internal `_link` helper (just `ln -s` with a skip-if-exists guard); edits to individual files go live immediately because the dotfiles are symlinked, not copied.
 
-`install-zed` symlinks `settings.json` and `themes/` individually rather than the whole `~/.config/zed/` directory — Zed writes runtime state (`conversations/`, `prompts/`) into that directory and we don't want it leaking into the repo.
+`install-zed` and `install-zellij` symlink individual files (`settings.json` + `themes/` for Zed; `config.kdl` + `layouts/` for Zellij) rather than the whole `~/.config/{zed,zellij}/` directory — both apps write runtime state (Zed: `conversations/`, `prompts/`; Zellij: `plugins/` with downloaded WASM binaries) into those directories and we don't want it leaking into the repo.
 
 The Firefox `extensions/treestyletab/style.css` is not symlinked — it must be pasted into the Tree Style Tab options page manually.
 

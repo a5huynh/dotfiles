@@ -32,7 +32,7 @@ bootstrap-vim-plugins:
     vim +PluginInstall +qall
 
 # Symlink everything into $HOME
-install: install-fish install-vim install-git install-zed
+install: install-fish install-vim install-git install-zed install-zellij
 
 install-fish:
     @mkdir -p "$HOME/.config"
@@ -52,6 +52,12 @@ install-zed:
     @mkdir -p "$HOME/.config/zed"
     @just _link "{{justfile_directory()}}/.config/zed/settings.json" "$HOME/.config/zed/settings.json"
     @just _link "{{justfile_directory()}}/.config/zed/themes" "$HOME/.config/zed/themes"
+
+# Symlink Zellij config (config.kdl + layouts/ — plugins/ stays untracked, it's runtime)
+install-zellij:
+    @mkdir -p "$HOME/.config/zellij"
+    @just _link "{{justfile_directory()}}/.config/zellij/config.kdl" "$HOME/.config/zellij/config.kdl"
+    @just _link "{{justfile_directory()}}/.config/zellij/layouts" "$HOME/.config/zellij/layouts"
 
 # Internal: idempotent symlink. Skips if the target already exists.
 _link source target:
