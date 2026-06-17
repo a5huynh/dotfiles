@@ -32,7 +32,7 @@ bootstrap-vim-plugins:
     vim +PluginInstall +qall
 
 # Symlink everything into $HOME
-install: install-fish install-vim install-git install-zed install-zellij
+install: install-fish install-vim install-git install-zed install-zellij install-claude
 
 install-fish:
     @mkdir -p "$HOME/.config"
@@ -58,6 +58,11 @@ install-zellij:
     @mkdir -p "$HOME/.config/zellij"
     @just _link "{{justfile_directory()}}/.config/zellij/config.kdl" "$HOME/.config/zellij/config.kdl"
     @just _link "{{justfile_directory()}}/.config/zellij/layouts" "$HOME/.config/zellij/layouts"
+
+# Symlink Claude Code hooks (individual files — ~/.claude/hooks/ also holds unversioned runtime state)
+install-claude:
+    @mkdir -p "$HOME/.claude/hooks"
+    @just _link "{{justfile_directory()}}/.claude/hooks/zellij-tab-notify.sh" "$HOME/.claude/hooks/zellij-tab-notify.sh"
 
 # Internal: idempotent symlink. Skips if the target already exists.
 _link source target:

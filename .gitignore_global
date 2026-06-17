@@ -54,3 +54,5 @@ xcuserdata/
 .ruby-version
 .python-version
 
+
+**/.claude/settings.local.json
