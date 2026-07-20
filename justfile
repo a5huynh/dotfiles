@@ -32,7 +32,7 @@ bootstrap-vim-plugins:
     vim +PluginInstall +qall
 
 # Symlink everything into $HOME
-install: install-fish install-vim install-git install-zed install-zellij install-claude
+install: install-fish install-vim install-git install-zed install-zellij install-claude install-pi install-herdr
 
 install-fish:
     @mkdir -p "$HOME/.config"
@@ -63,6 +63,16 @@ install-zellij:
 install-claude:
     @mkdir -p "$HOME/.claude/hooks"
     @just _link "{{justfile_directory()}}/.claude/hooks/zellij-tab-notify.sh" "$HOME/.claude/hooks/zellij-tab-notify.sh"
+
+# Symlink pi global agent instructions (individual file — ~/.pi/agent/ holds runtime state: auth.json, sessions/, etc.)
+install-pi:
+    @mkdir -p "$HOME/.pi/agent"
+    @just _link "{{justfile_directory()}}/.pi/agent/AGENTS.md" "$HOME/.pi/agent/AGENTS.md"
+
+# Symlink herdr config (individual file — ~/.config/herdr/ also holds runtime state: herdr.log, herdr-*.log)
+install-herdr:
+    @mkdir -p "$HOME/.config/herdr"
+    @just _link "{{justfile_directory()}}/.config/herdr/config.toml" "$HOME/.config/herdr/config.toml"
 
 # Internal: idempotent symlink. Skips if the target already exists.
 _link source target:
