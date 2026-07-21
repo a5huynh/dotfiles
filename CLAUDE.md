@@ -16,13 +16,15 @@ just install                   # symlink dotfiles into $HOME
 just bootstrap-plugins         # install fish/vim plugins
 ```
 
-Or do one tool at a time: `install-{fish,vim,git,zed,zellij,claude,pi,herdr}` for symlinks, `bootstrap-{fish,vim}-plugins` for plugin managers.
+Or do one tool at a time: `install-{fish,vim,git,zed,zellij,claude,pi,herdr}` for symlinks, `bootstrap-{fish,vim}-plugins` for plugin managers, `bootstrap-herdr-integrations` for herdr agent hooks.
 
 The plugin step **must** run after `install` — fisher reads `~/.config/fish/fish_plugins` and vim reads `~/.vimrc`, both from `$HOME` (via the symlinks `install` just created). `bootstrap-vim-plugins` also clones Vundle itself if missing.
 
 All `install-*` recipes are idempotent — they **skip if the target path already exists**. `bootstrap` is also re-runnable. `bootstrap-plugins` is safe to re-run but does network I/O each time. Recipes call the internal `_link` helper (just `ln -s` with a skip-if-exists guard); edits to individual files go live immediately because the dotfiles are symlinked, not copied.
 
 `install-zed` and `install-zellij` symlink individual files (`settings.json` + `themes/` for Zed; `config.kdl` + `layouts/` for Zellij) rather than the whole `~/.config/{zed,zellij}/` directory — both apps write runtime state (Zed: `conversations/`, `prompts/`; Zellij: `plugins/` with downloaded WASM binaries) into those directories and we don't want it leaking into the repo. `install-claude` follows the same pattern for `.claude/hooks/zellij-tab-notify.sh` — `~/.claude/` is full of runtime state and other unversioned hooks. `install-pi` likewise symlinks only `.pi/agent/AGENTS.md` (the global agent instructions) — `~/.pi/agent/` holds runtime state (`auth.json`, `sessions/`, `extensions/`, `skills/`, `themes/`). `install-herdr` symlinks only `.config/herdr/config.toml` — `~/.config/herdr/` also accumulates runtime logs (`herdr.log`, `herdr-client.log`, `herdr-server.log`).
+
+The herdr↔agent state integrations (pi/claude/codex lifecycle hooks that report `idle`/`working`/`blocked` and enable native session restore) are generated *outside* this repo by herdr, so they're not symlinked. Run `just bootstrap-herdr-integrations` to (re)install them via `herdr integration install` — safe to re-run, and it re-syncs versions after a herdr upgrade (`herdr integration status` shows current/outdated). herdr and pi are not in the Brewfile yet, so a fresh machine needs them installed first.
 
 `.claude/hooks/zellij-tab-notify.sh` puts a 🔔 on the zellij tab containing a Claude Code session that's waiting for input, and clears it when you respond. The script alone does nothing — it must be wired to hook events (`track` on SessionStart/UserPromptSubmit, `notify` on Stop/Notification/PermissionRequest, `clear` on PostToolUse/SessionEnd) in `~/.claude/settings.json`, which is not versioned here. It targets tabs via `rename-tab-by-id` (needs zellij ≥ 0.43) because plain `rename-tab` acts on the user's *focused* tab, which is the wrong tab exactly when the notification matters.
 

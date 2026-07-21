@@ -1,5 +1,10 @@
 [ui]
 agent_panel_sort = "spaces"
+show_agent_labels_on_pane_borders = false
+
+[ui.toast]
+# Desktop notification when a background agent pane finishes or is blocked.
+delivery = "system"
 
 [theme]
 name = "tokyo-night"

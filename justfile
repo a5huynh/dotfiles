@@ -31,6 +31,26 @@ bootstrap-vim-plugins:
     fi
     vim +PluginInstall +qall
 
+# Not a symlink — herdr generates version-managed hook/extension files outside this repo.
+# Install herdr agent-state integrations (run after `install`; needs herdr + the agents present)
+bootstrap-herdr-integrations:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v herdr &> /dev/null; then
+        echo "-> herdr not installed, skipping"
+        exit 0
+    fi
+    if command -v pi &> /dev/null; then
+        mkdir -p "$HOME/.pi/agent/extensions"
+        herdr integration install pi
+    fi
+    if [ -d "$HOME/.claude" ]; then
+        herdr integration install claude
+    fi
+    if [ -d "$HOME/.codex" ]; then
+        herdr integration install codex
+    fi
+
 # Symlink everything into $HOME
 install: install-fish install-vim install-git install-zed install-zellij install-claude install-pi install-herdr
 
