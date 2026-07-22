@@ -84,10 +84,11 @@ install-claude:
     @mkdir -p "$HOME/.claude/hooks"
     @just _link "{{justfile_directory()}}/.claude/hooks/zellij-tab-notify.sh" "$HOME/.claude/hooks/zellij-tab-notify.sh"
 
-# Symlink pi global agent instructions (individual file — ~/.pi/agent/ holds runtime state: auth.json, sessions/, etc.)
+# Symlink pi global agent config (individual items — ~/.pi/agent/ holds runtime state: auth.json, sessions/, etc.)
 install-pi:
-    @mkdir -p "$HOME/.pi/agent"
+    @mkdir -p "$HOME/.pi/agent/skills"
     @just _link "{{justfile_directory()}}/.pi/agent/AGENTS.md" "$HOME/.pi/agent/AGENTS.md"
+    @just _link "{{justfile_directory()}}/.pi/agent/skills/herdr" "$HOME/.pi/agent/skills/herdr"
 
 # Symlink herdr config (individual file — ~/.config/herdr/ also holds runtime state: herdr.log, herdr-*.log)
 install-herdr:
