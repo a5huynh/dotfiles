@@ -30,6 +30,7 @@ just bootstrap-plugins   # installs fish + vim plugins
 | **git** | global gitconfig + global gitignore |
 | **Zed** | `settings.json` + the `Zedokai` theme |
 | **Zellij** | `config.kdl` + custom layouts |
+| **pi** | global `AGENTS.md` + tracked agent skills (`herdr`, `socratic-tutor`) |
 | **Brewfile** | every brew/cask the configs assume exists |
 
 Machine-local secrets (API keys, tokens) go in `~/.config/fish/secrets.fish` — gitignored, sourced from `config.fish` if present.
