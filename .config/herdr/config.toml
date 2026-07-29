@@ -1,0 +1,20 @@
+[ui]
+agent_panel_sort = "spaces"
+show_agent_labels_on_pane_borders = false
+
+[ui.toast]
+# Desktop notification when a background agent pane finishes or is blocked.
+delivery = "system"
+
+[theme]
+name = "tokyo-night"
+
+# Neutrals pinned to pi's ~/.pi/agent/themes/tokyo-night.json so herdr's
+# surfaces/overlays match pi exactly. All accent colors already match the
+# built-in tokyo-night palette.
+[theme.custom]
+surface0    = "#292e42"  # pi bgHighlight / selectedBg
+surface1    = "#3b4261"  # pi borderMuted
+surface_dim = "#16161e"  # pi bgDark
+overlay1    = "#737aa2"  # pi dim
+subtext0    = "#9aa5ce"  # pi muted
