@@ -79,10 +79,18 @@ install-zellij:
     @just _link "{{justfile_directory()}}/.config/zellij/config.kdl" "$HOME/.config/zellij/config.kdl"
     @just _link "{{justfile_directory()}}/.config/zellij/layouts" "$HOME/.config/zellij/layouts"
 
-# Symlink Claude Code hooks (individual files — ~/.claude/hooks/ also holds unversioned runtime state)
+# Symlink Claude Code config (hook + every tracked skill; ~/.claude/ also holds unversioned runtime state)
 install-claude:
-    @mkdir -p "$HOME/.claude/hooks"
-    @just _link "{{justfile_directory()}}/.claude/hooks/zellij-tab-notify.sh" "$HOME/.claude/hooks/zellij-tab-notify.sh"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p "$HOME/.claude/hooks" "$HOME/.claude/skills"
+    just _link "{{justfile_directory()}}/.claude/hooks/zellij-tab-notify.sh" "$HOME/.claude/hooks/zellij-tab-notify.sh"
+    skills_dir="{{justfile_directory()}}/.claude/skills"
+    for skill in "$skills_dir"/*/; do
+        [ -d "$skill" ] || continue
+        name="$(basename "$skill")"
+        just _link "$skills_dir/$name" "$HOME/.claude/skills/$name"
+    done
 
 # Symlink pi global agent config (AGENTS.md + every tracked skill; ~/.pi/agent/ also holds runtime state: auth.json, sessions/, etc.)
 install-pi:
