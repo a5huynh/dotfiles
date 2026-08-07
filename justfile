@@ -92,17 +92,24 @@ install-claude:
         just _link "$skills_dir/$name" "$HOME/.claude/skills/$name"
     done
 
-# Symlink pi global agent config (AGENTS.md + every tracked skill; ~/.pi/agent/ also holds runtime state: auth.json, sessions/, etc.)
+# Symlink pi global agent config (AGENTS.md + every tracked skill and extension; ~/.pi/agent/ also holds runtime state: auth.json, sessions/, etc.)
 install-pi:
     #!/usr/bin/env bash
     set -euo pipefail
     skills_dir="{{justfile_directory()}}/.pi/agent/skills"
-    mkdir -p "$HOME/.pi/agent/skills"
+    ext_dir="{{justfile_directory()}}/.pi/agent/extensions"
+    mkdir -p "$HOME/.pi/agent/skills" "$HOME/.pi/agent/extensions"
     just _link "{{justfile_directory()}}/.pi/agent/AGENTS.md" "$HOME/.pi/agent/AGENTS.md"
     for skill in "$skills_dir"/*/; do
         [ -d "$skill" ] || continue
         name="$(basename "$skill")"
         just _link "$skills_dir/$name" "$HOME/.pi/agent/skills/$name"
+    done
+    # Only our own extensions — herdr generates herdr-agent-state.ts outside this repo.
+    for ext in "$ext_dir"/*.ts "$ext_dir"/*/; do
+        [ -e "$ext" ] || continue
+        name="$(basename "$ext")"
+        just _link "$ext_dir/$name" "$HOME/.pi/agent/extensions/$name"
     done
 
 # Symlink herdr config (individual file — ~/.config/herdr/ also holds runtime state: herdr.log, herdr-*.log)
