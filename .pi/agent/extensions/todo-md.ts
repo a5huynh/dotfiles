@@ -260,7 +260,8 @@ export default function (pi: ExtensionAPI) {
 			"- remove: delete `id`\n" +
 			"- clear_done: delete all completed todos\n" +
 			"Ids are positional and shift after remove/clear_done — every result returns the refreshed list, so use those ids.",
-		promptSnippet: `todo: read/update the repo's ${FILENAME} task list`,
+		// Rendered as `- <name>: <snippet>`, so no "todo:" prefix here.
+		promptSnippet: `read/update the repo's ${FILENAME} task list that persists across sessions`,
 		promptGuidelines: [
 			`Use the todo tool for work the user wants tracked in ${FILENAME} across sessions, not as scratch state for a single reply.`,
 			"Mark items done with the todo tool as you complete them rather than rewriting todo.md by hand.",
