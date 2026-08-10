@@ -3,8 +3,11 @@
 # -------------------------------------
 # best shell in the world
 brew "fish"
-# fuzzy finder — sourced unconditionally in config.fish
+# fuzzy finder — sourced unconditionally in config.fish, and the picker UI for
+# the herdr tab-jump plugin
 brew "fzf"
+# JSON processor — parses `herdr api snapshot` in the herdr tab-jump plugin
+brew "jq"
 # task runner — used by the justfile in this repo
 brew "just"
 # better `ls`

@@ -1,0 +1,29 @@
+id = "tab-jump"
+name = "Tab Jump"
+version = "0.1.0"
+min_herdr_version = "0.7.4"
+description = "Fuzzy-search every tab in the session and jump to it"
+platforms = ["macos", "linux"]
+
+# The picker itself. Runs as a session-modal popup so it never disturbs the
+# workspace layout — the herdr analogue of zellij's floating room.wasm pane.
+[[panes]]
+id = "picker"
+title = "Jump to tab"
+placement = "popup"
+width = "80%"
+height = "70%"
+command = ["sh", "-c", 'exec "$HERDR_PLUGIN_ROOT/jump.sh"']
+
+# Bound to a key in config.toml via `type = "plugin_action"`, and callable
+# by hand with `herdr plugin action invoke jump`.
+[[actions]]
+id = "jump"
+title = "Jump to tab"
+description = "Open the tab picker"
+contexts = ["global"]
+command = [
+    "sh",
+    "-c",
+    'exec "${HERDR_BIN_PATH:-herdr}" plugin pane open --plugin tab-jump --entrypoint picker --focus',
+]
