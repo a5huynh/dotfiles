@@ -50,3 +50,15 @@ focus_pane_left  = ["prefix+h", "alt+h", "prefix+left"]
 focus_pane_down  = ["prefix+j", "alt+j", "prefix+down"]
 focus_pane_up    = ["prefix+k", "alt+k", "prefix+up"]
 focus_pane_right = ["prefix+l", "alt+l", "prefix+right"]
+
+# Mirrors zellij's `Ctrl y` -> room.wasm floating tab search. herdr ships a
+# built-in `goto` (prefix+g), but it is pane-granular and too noisy; this is
+# tabs only. Lives in .config/herdr/plugins/tab-jump/ and is registered with
+# the server by `just bootstrap-herdr-plugins`, not by a symlink.
+# NOTE: [[keys.command]] must stay last — any bare key after it would be parsed
+# into the command table rather than [keys].
+[[keys.command]]
+key = "prefix+y"
+type = "plugin_action"
+command = "jump"
+description = "Jump to tab"

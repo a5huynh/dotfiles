@@ -16,8 +16,8 @@ bootstrap-homebrew:
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     fi
 
-# Install fish/vim plugins (run AFTER `just install` — plugin managers read from $HOME)
-bootstrap-plugins: bootstrap-fish-plugins bootstrap-vim-plugins
+# Install fish/vim/herdr plugins (run AFTER `just install` — plugin managers read from $HOME)
+bootstrap-plugins: bootstrap-fish-plugins bootstrap-vim-plugins bootstrap-herdr-plugins
 
 bootstrap-fish-plugins:
     fish -c "fisher update"
@@ -116,6 +116,28 @@ install-pi:
 install-herdr:
     @mkdir -p "$HOME/.config/herdr"
     @just _link "{{justfile_directory()}}/.config/herdr/config.toml" "$HOME/.config/herdr/config.toml"
+
+# Not a symlink — `herdr plugin link` records an absolute path in
+# ~/.config/herdr/plugins.json, so it points at this repo directly.
+# Register our herdr plugins with the running server (run after `install`)
+bootstrap-herdr-plugins:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v herdr &> /dev/null; then
+        echo "-> herdr not installed, skipping"
+        exit 0
+    fi
+    linked="$(herdr plugin list --json 2>/dev/null || echo '{}')"
+    for plugin in "{{justfile_directory()}}/.config/herdr/plugins"/*/; do
+        [ -f "$plugin/herdr-plugin.toml" ] || continue
+        id="$(basename "$plugin")"
+        if printf '%s' "$linked" | grep -q "\"plugin_id\":\"$id\""; then
+            echo "-> herdr plugin $id already linked, skipping"
+        else
+            echo "-> linking herdr plugin $id"
+            herdr plugin link "${plugin%/}"
+        fi
+    done
 
 # Internal: idempotent symlink. Skips if the target already exists.
 _link source target:
