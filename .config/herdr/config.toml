@@ -18,3 +18,33 @@ surface1    = "#3b4261"  # pi borderMuted
 surface_dim = "#16161e"  # pi bgDark
 overlay1    = "#737aa2"  # pi dim
 subtext0    = "#9aa5ce"  # pi muted
+
+# Keybindings mirrored from ~/.config/zellij/config.kdl — specifically its `tmux`
+# mode, which is already prefix-shaped. zellij's other modes are modal (sticky
+# `Ctrl p` pane mode etc.) and have no herdr equivalent; herdr is prefix-only.
+# Each action lists the zellij binding first and keeps herdr's default as an alias.
+[keys]
+prefix = "ctrl+b"  # same prefix zellij uses to enter tmux mode
+
+# Splits intentionally left at herdr defaults: prefix+v = split right,
+# prefix+minus = split down. Careful when comparing to tmux — the names are
+# inverted: tmux's "vertical" split (`"`) stacks downward, whereas herdr's
+# split_vertical splits to the right.
+
+rename_tab = ["prefix+comma", "prefix+shift+t"]  # zellij tmux-mode `,`
+detach     = ["prefix+d", "prefix+q"]            # zellij tmux-mode `d`
+
+# zellij tmux-mode `o` cycles panes, but herdr ships `o` as
+# open_notification_target, so that one moves to shift+o.
+cycle_pane_next          = ["prefix+o", "prefix+tab"]
+open_notification_target = "prefix+shift+o"
+
+# zellij moves pane focus without the prefix via Alt+hjkl, and also binds bare
+# arrows inside its tmux mode - so prefix+<arrow> mirrors zellij directly.
+# Arrows deliberately go through the prefix instead of plain alt: Ghostty binds
+# alt+arrow_left / alt+arrow_right to esc:b / esc:f (readline word-motion) by
+# default, so alt+left/right never reach herdr. Bare alt+hjkl is unaffected.
+focus_pane_left  = ["prefix+h", "alt+h", "prefix+left"]
+focus_pane_down  = ["prefix+j", "alt+j", "prefix+down"]
+focus_pane_up    = ["prefix+k", "alt+k", "prefix+up"]
+focus_pane_right = ["prefix+l", "alt+l", "prefix+right"]
