@@ -234,7 +234,9 @@ async function checkOne(domain) {
 }
 
 async function priceOne(domain) {
-  if (aborted) return null;
+  // Only auth failures are fatal everywhere. A checkDomain quota lockout must NOT suppress
+  // pricing: it's a separate endpoint with a separate quota, and still answers normally.
+  if (aborted?.status === 401) return null;
   const acct = await account();
   try {
     const r = await api(`/${acct}/registrar/domains/${encodeURIComponent(domain)}/prices`);
@@ -290,7 +292,9 @@ function report(rows) {
 
   if (skipped.length) {
     console.log(`\nNOT CHECKED (${skipped.length}) — ${aborted?.message ?? "run aborted"}`);
-    console.log("  Results above are partial. Re-run after the reset to check the rest.");
+    for (const r of skipped) console.log(`  ${r.domain}`);
+    console.log(`\n  Re-run just these after the reset:`);
+    console.log(`  check ${skipped.map((r) => r.domain).join(" ")}`);
   }
 }
 
