@@ -73,9 +73,18 @@ node ~/.pi/agent/skills/dnsimple/dnsimple.mjs tlds                      # all su
 ## Notes
 
 - **There is no bulk availability endpoint.** `GET /{account}/registrar/domains/{domain}/check`
-  takes one domain, so a search of 10 names × 10 TLDs is 100 requests. The account limit is
-  **2,400 requests/hour** — keep candidate sets bounded, and prefer `--tlds` over the default list
-  when you already know the TLD.
+  takes one domain, so a search of 10 names × 10 TLDs is 100 requests.
+- **⚠️ `checkDomain` has its own hourly quota, far below the account limit, and no header tracks
+  it.** The account allowance is 2,400 requests/hour, but availability checks are throttled
+  separately — observed at **roughly 50 checks/hour** on a personal plan, after which every check
+  returns 429 `endpoint checkDomain quota exceeded`. At that moment `x-ratelimit-remaining` still
+  read **2287**, so the headers cannot be used to predict or pace it. Budget ~50 checks per hour,
+  keep `--tlds` tight, and treat a broad sweep (many names × many TLDs) as something that will
+  fail partway.
+  - The quota is **per endpoint, not per account**: `prices`, `tlds` and `whoami` keep working
+    normally while checks are refused, so pricing up a shortlist is still possible.
+  - A quota 429 **keeps the results already collected** and lists the remainder under
+    `NOT CHECKED`, exiting 1. There's no retry, because an hourly quota cannot clear in seconds.
 - **`available: true` plus `premium: true` can still cost thousands.** Premium results are labelled
   `PREMIUM`; use `--prices` before getting attached to one.
 - **Per-domain failures don't abort the run** — an unsupported TLD lands in an `ERRORS` section

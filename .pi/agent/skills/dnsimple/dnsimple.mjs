@@ -112,24 +112,32 @@ async function api(path, { retry = true } = {}) {
     },
   });
 
-  if (res.status === 429 && retry) {
-    // Rate limited (2,400 req/hour). One short retry, then report the reset time
-    // rather than blocking the caller for minutes.
-    await new Promise((r) => setTimeout(r, 2000));
-    return api(path, { retry: false });
-  }
-
   const text = await res.text();
   let body = null;
   try { body = text ? JSON.parse(text) : null; } catch { /* non-JSON error page */ }
 
+  if (res.status === 429) {
+    const reset = res.headers.get("x-ratelimit-reset");
+    const when = reset ? new Date(Number(reset) * 1000).toLocaleTimeString() : "unknown";
+    const msg = body?.message ?? "";
+
+    // A per-endpoint quota (e.g. "endpoint checkDomain quota exceeded") is hourly and
+    // far smaller than the account limit — retrying in a couple of seconds cannot help,
+    // and the x-ratelimit-* headers don't track it, so they can't be used to predict it.
+    if (/quota exceeded/i.test(msg)) {
+      const remaining = res.headers.get("x-ratelimit-remaining");
+      throw new ApiError(429, `${msg}; resets at ${when}` +
+        (remaining ? ` (account limit is fine: ${remaining} left — this is a separate per-endpoint quota)` : ""), res.headers);
+    }
+    if (retry) {
+      await new Promise((r) => setTimeout(r, 2000));
+      return api(path, { retry: false });
+    }
+    throw new ApiError(429, `Rate limited; resets at ${when}`, res.headers);
+  }
+
   if (!res.ok) {
     if (res.status === 401) throw new ApiError(401, "Unauthorized — check DNSIMPLE_TOKEN", res.headers);
-    if (res.status === 429) {
-      const reset = res.headers.get("x-ratelimit-reset");
-      const when = reset ? new Date(Number(reset) * 1000).toLocaleTimeString() : "unknown";
-      throw new ApiError(429, `Rate limited; resets at ${when}`, res.headers);
-    }
     throw new ApiError(res.status, body?.message || `HTTP ${res.status}`, res.headers);
   }
   return body;
@@ -193,7 +201,12 @@ function candidates(names) {
   return [...out];
 }
 
+// Set when a fatal error (quota/auth) makes every remaining request pointless. Work already
+// done is still worth reporting, so the pool drains into `skipped` instead of throwing.
+let aborted = null;
+
 async function checkOne(domain) {
+  if (aborted) return { domain, skipped: true };
   const acct = await account();
   try {
     if (opts.research) {
@@ -211,12 +224,17 @@ async function checkOne(domain) {
     const d = r?.data ?? {};
     return { domain, available: !!d.available, premium: !!d.premium };
   } catch (e) {
-    if (e.status === 429 || e.status === 401) throw e; // fatal, don't mask as per-domain noise
+    // Fatal for the run, but don't discard results already collected.
+    if (e.status === 429 || e.status === 401) {
+      aborted ??= e;
+      return { domain, skipped: true };
+    }
     return { domain, error: e.message };
   }
 }
 
 async function priceOne(domain) {
+  if (aborted) return null;
   const acct = await account();
   try {
     const r = await api(`/${acct}/registrar/domains/${encodeURIComponent(domain)}/prices`);
@@ -235,8 +253,9 @@ function report(rows) {
   }
 
   const available = rows.filter((r) => r.available);
-  const taken = rows.filter((r) => !r.available && !r.error);
+  const taken = rows.filter((r) => !r.available && !r.error && !r.skipped);
   const errored = rows.filter((r) => r.error);
+  const skipped = rows.filter((r) => r.skipped);
   const width = Math.max(0, ...rows.map((r) => r.domain.length));
   const pad = (s) => s.padEnd(width);
 
@@ -268,6 +287,11 @@ function report(rows) {
     console.log(`\nERRORS (${errored.length})`);
     for (const r of errored) console.log(`  ${pad(r.domain)}  ${r.error}`);
   }
+
+  if (skipped.length) {
+    console.log(`\nNOT CHECKED (${skipped.length}) — ${aborted?.message ?? "run aborted"}`);
+    console.log("  Results above are partial. Re-run after the reset to check the rest.");
+  }
 }
 
 async function runCheck(domains) {
@@ -280,6 +304,7 @@ async function runCheck(domains) {
   }
   rows.sort((a, b) => Number(!!b.available) - Number(!!a.available) || a.domain.localeCompare(b.domain));
   report(rows);
+  if (aborted) process.exitCode = 1;
 }
 
 // ------------------------------------------------------------------- commands

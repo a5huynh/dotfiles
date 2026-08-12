@@ -21,6 +21,16 @@ const server = createServer((req, res) => {
   if (m) {
     const domain = decodeURIComponent(m[1]);
     if (domain.endsWith(".zzz")) return json({ message: "TLD .zzz is not supported" }, 400);
+    if (domain.startsWith("quota")) {
+      // The real API returns a per-endpoint quota 429 while the account limit is untouched.
+      res.writeHead(429, {
+        "content-type": "application/json",
+        "x-ratelimit-limit": "2400",
+        "x-ratelimit-remaining": "2287",
+        "x-ratelimit-reset": String(Math.floor(Date.now() / 1000) + 1800),
+      });
+      return res.end(JSON.stringify({ message: "endpoint checkDomain quota exceeded" }));
+    }
     return json({ data: { domain, available: !TAKEN.has(domain), premium: domain === "barfly.ai" } });
   }
   m = url.pathname.match(/^\/42\/registrar\/domains\/([^/]+)\/prices$/);
@@ -55,6 +65,9 @@ await show("prices", ["prices", "barfly.ai"]);
 await show("tlds filter", ["tlds", "co"]);
 await show("whoami", ["whoami"]);
 await show("DNSIMPLE_ACCOUNT skips whoami", ["check", "barfly.io"], { DNSIMPLE_ACCOUNT: "42" });
+// Partial results must survive a quota 429, and the remainder reported as unchecked.
+// --concurrency 1 makes the abort point deterministic.
+await show("quota 429 keeps partial results", ["check", "barfly.io", "barfly.dev", "quota1.com", "quota2.com", "barfly.app", "--concurrency", "1"]);
 await show("bad command", ["frobnicate"]);
 
 console.log(`\n=== whoami calls made: ${seen.filter((u) => u === "/whoami").length} of ${seen.length} requests ===`);
