@@ -89,8 +89,10 @@ node ~/.pi/agent/skills/dnsimple/dnsimple.mjs tlds                      # all su
   `PREMIUM`; use `--prices` before getting attached to one.
 - **Per-domain failures don't abort the run** — an unsupported TLD lands in an `ERRORS` section
   while the rest report normally. Only 401 (bad token) and 429 (rate limited) are fatal.
-- `--research` is a **private beta** endpoint that returns 404 unless it's enabled for the account;
-  the default `check` path is the stable one.
+- `--research` is a **private beta** endpoint. Unless it's enabled for the account it answers
+  **412 `Feature not enabled: api_domain_research`** (ask support@dnsimple.com to turn it on). It
+  surfaces as a per-domain error rather than aborting the run, so the default `check` path stays
+  the one to use. It is *not* a way around the `checkDomain` quota while disabled.
 - **Tests:** `node ~/.pi/agent/skills/dnsimple/test.mjs` runs the CLI against a self-terminating
   stub API (via `DNSIMPLE_API_BASE`) and needs no token or network. Run it after editing
   `dnsimple.mjs`; check the request count it prints at the end, which is what caught the
