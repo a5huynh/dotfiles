@@ -74,13 +74,16 @@ node ~/.pi/agent/skills/dnsimple/dnsimple.mjs tlds                      # all su
 
 - **There is no bulk availability endpoint.** `GET /{account}/registrar/domains/{domain}/check`
   takes one domain, so a search of 10 names × 10 TLDs is 100 requests.
-- **⚠️ `checkDomain` has its own hourly quota, far below the account limit, and no header tracks
-  it.** The account allowance is 2,400 requests/hour, but availability checks are throttled
-  separately — observed at **roughly 50 checks/hour** on a personal plan, after which every check
-  returns 429 `endpoint checkDomain quota exceeded`. At that moment `x-ratelimit-remaining` still
-  read **2287**, so the headers cannot be used to predict or pace it. Budget ~50 checks per hour,
-  keep `--tlds` tight, and treat a broad sweep (many names × many TLDs) as something that will
-  fail partway.
+- **⚠️ `checkDomain` has its own quota, far below the account limit, and no header tracks it.**
+  The account allowance is 2,400 requests/hour, but availability checks are throttled separately:
+  **60 checks per rolling 60 minutes** on a personal plan (measured — 59 succeeded, the 60th was
+  refused), after which every check returns 429 `endpoint checkDomain quota exceeded`. At that
+  moment `x-ratelimit-remaining` still read **2314 of 2400**, so the headers cannot be used to
+  predict or pace it.
+  - **The window is rolling, and starts at your first check** — not on the hour. The reset
+    timestamp reported in the 429 was consistently exactly 60 minutes after the first check of
+    the window, so a sweep begun at 5:34 frees up at 6:34. Budget accordingly: one sweep of ~55
+    per hour, and don't split it across two sessions expecting a fresh allowance.
   - The quota is **per endpoint, not per account**: `prices`, `tlds` and `whoami` keep working
     normally while checks are refused, so pricing up a shortlist is still possible.
   - A quota 429 **keeps the results already collected** and lists the remainder under
