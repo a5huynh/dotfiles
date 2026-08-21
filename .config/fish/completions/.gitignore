@@ -1,0 +1,5 @@
+*
+!.gitignore
+!fisher.fish
+!node.fish
+!nvm.fish
