@@ -4,6 +4,61 @@ onboarding = false
 agent_panel_sort = "priority"
 show_agent_labels_on_pane_borders = false
 
+# Workspace labels run long ("walmart-api-integration" is 23 cols on its own),
+# and every agent row has to carry one because agent_panel_sort = "priority"
+# orders by attention queue rather than grouping under space headers.
+sidebar_width = 32
+sidebar_max_width = 36
+
+# Vertical space is the binding constraint, not width: the default two-rows-per
+# entry costs 2 lines x every agent + 2 x every space, which overflows the
+# sidebar well before the agent list is interesting.
+#
+# terminal_title_stripped is what makes the difference, and it is only worth a
+# row for some agents. claude reports the task ("Review pull request #871");
+# pi reports "π - <dirname>", which just restates the workspace. So pi gets one
+# row and claude gets two — and for claude that second row is also the only
+# thing telling apart two sessions sharing a tab.
+#
+# Every token here is styled explicitly, and dim = false is load-bearing on all
+# of them: omitted style fields inherit the *contextual* default, which is dim,
+# and that drops these colors to ~3:1 against the panel — washed-out grey.
+# plugins/tab-jump/jump.sh gets away with bare hex because it writes raw ANSI
+# with no dim attribute; the sidebar does not.
+#
+# Brightness tracks information value, brightest first:
+#   tab   #c0caf5 bold  8.3:1  hand-named, the most specific field in the row
+#   title #a9b1d6       6.4:1  the task, claude only (pi reports "π - <dir>")
+#   ws    #7aa2f7       5.3:1  context only; blue reads as location
+# The tab/workspace order matters: leaving workspace at its default made mere
+# context outrank identity.
+[ui.sidebar.agents]
+row_gap = 0
+rows = [[
+  "state_icon",
+  { token = "workspace", fg = "#7aa2f7", dim = false },
+  { token = "tab", fg = "#c0caf5", bold = true, dim = false },
+]]
+
+[ui.sidebar.agents.rows_by_agent]
+claude = [
+  [
+    "state_icon",
+    { token = "workspace", fg = "#7aa2f7", dim = false },
+    { token = "tab", fg = "#c0caf5", bold = true, dim = false },
+  ],
+  [{ token = "terminal_title_stripped", fg = "#a9b1d6", dim = false }],
+]
+
+# The upstream default second row is ["branch", "git_status"]. Neither token
+# renders anything here — verified visually, not just inferred from the API,
+# which also omits both fields: these workspaces are plain directories, not git
+# worktrees, so herdr has no git state to report. Re-adding either from the
+# default config just costs a blank line per space.
+[ui.sidebar.spaces]
+row_gap = 0
+rows = [["state_icon", "workspace"]]
+
 [ui.toast]
 # Desktop notification when a background agent pane finishes or is blocked.
 delivery = "system"

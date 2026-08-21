@@ -1,0 +1,44 @@
+id = "tab-status"
+name = "Tab Status"
+version = "0.1.0"
+min_herdr_version = "0.8.0"
+description = "Mark tabs whose agent is blocked with a marker in the tab bar"
+platforms = ["macos", "linux"]
+
+# herdr's tab bar has no status indicator and no row/token config to add one
+# (the only [ui] tab-bar keys are hide_tab_bar_when_single_tab and
+# tab_bar_position), so the marker has to live in the tab *label* itself.
+[[actions]]
+id = "sync"
+title = "Sync tab status markers"
+description = "Reconcile blocked-agent markers on every tab label"
+contexts = ["global"]
+command = ["sh", "-c", 'exec "$HERDR_PLUGIN_ROOT/mark.sh"']
+
+# Fires whenever any pane's agent changes state. Event hooks run a `command`
+# directly -- they cannot reference an [[actions]] id -- so this duplicates the
+# action's command rather than delegating to it. The action above is kept as the
+# manual/debuggable entrypoint (`herdr plugin action invoke sync`), since
+# `herdr plugin log list` captures actions.
+#
+# The script reconciles every tab from a fresh snapshot rather than acting on
+# the event payload, so it is correct no matter which pane triggered it, and
+# self-heals if an event is missed entirely.
+[[events]]
+on = "pane.agent_status_changed"
+command = ["sh", "-c", 'exec "$HERDR_PLUGIN_ROOT/mark.sh"']
+
+# mark.sh suppresses the marker on the focused tab, so focus changes have to
+# re-reconcile too or a marker would linger on a tab you are already reading
+# until its agent next changed state. workspace.focused matters as well: it
+# moves focused_tab_id without necessarily firing tab.focused, which would
+# leave the previously-focused tab unmarked while it still wants attention.
+# Redundant triggers are harmless -- the reconcile is idempotent and the lock
+# coalesces bursts.
+[[events]]
+on = "tab.focused"
+command = ["sh", "-c", 'exec "$HERDR_PLUGIN_ROOT/mark.sh"']
+
+[[events]]
+on = "workspace.focused"
+command = ["sh", "-c", 'exec "$HERDR_PLUGIN_ROOT/mark.sh"']
