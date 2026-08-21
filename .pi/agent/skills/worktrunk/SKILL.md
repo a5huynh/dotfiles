@@ -34,6 +34,10 @@ cd "$path" && <do work>                      # same invocation, or persist $path
 `action` is `created`, `existing`, or `already_at`. `--no-cd` suppresses only the cd attempt — hooks
 still run.
 
+JSON goes to **stdout, progress to stderr**, so never redirect `2>&1` into a parser — the status line
+(`○ Switched to worktree for …`) lands mid-stream and `jq` dies on it. Use `2>/dev/null`, or keep
+stderr on the terminal as above. This applies to every `--format=json` command.
+
 Afterwards, reach the worktree explicitly. Every `wt` command takes a global `-C <path>`:
 
 ```bash
