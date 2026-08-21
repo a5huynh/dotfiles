@@ -10,11 +10,25 @@ homelab cluster. No npm install — uses Node's built-in `fetch`.
 
 ## Setup
 
-```bash
-export PLANE_API_TOKEN=plane_api_…   # required
-export PLANE_BASE_URL=…              # optional, default https://plane.discus-musical.ts.net
-export PLANE_WORKSPACE=…             # optional, default "personal"
+Already configured. `PLANE_API_TOKEN` lives in `~/.config/fish/secrets.fish`
+(gitignored, alongside `DNSIMPLE_TOKEN` and `BRAVE_API_KEY`), which
+`config.fish` sources on shell start. `set -gx` exports it, so any session
+launched from fish inherits it — no per-session setup.
+
+If `whoami` reports the token is missing, the process was almost certainly not
+started from a fish shell (GUI launcher, cron, launchd), since environment is
+captured at launch. Either relaunch from a terminal or set it explicitly:
+
+```fish
+set -gx PLANE_API_TOKEN plane_api_…   # fish
 ```
+```bash
+export PLANE_API_TOKEN=plane_api_…    # bash/zsh
+```
+
+Optional overrides: `PLANE_BASE_URL` (default
+`https://plane.discus-musical.ts.net`) and `PLANE_WORKSPACE` (default
+`personal`).
 
 Verify connectivity and which identity the token acts as:
 
