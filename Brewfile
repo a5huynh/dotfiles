@@ -31,6 +31,10 @@ brew "python@3.9"
 brew "rbenv"
 brew "sqlite"
 brew "vim"
+# git worktree manager (`wt`) — driven by the shared worktrunk agent skill.
+# Needs `wt config shell install` once, which writes functions/wt.fish +
+# completions/wt.fish; without it `wt switch` cannot cd.
+brew "worktrunk"
 
 # -------------------------------------
 # Editors
