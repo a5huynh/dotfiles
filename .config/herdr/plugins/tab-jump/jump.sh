@@ -72,8 +72,19 @@ rows=$("$herdr" api snapshot | jq -r --arg home "$HOME" '
 
 [ -n "$rows" ] || exit 0
 
+# --with-shell is required, not tidiness: fzf runs child processes with `$SHELL -c`,
+# which here is fish, and the preview below is POSIX sh. (The give-away is fish
+# reporting `${ is not a valid variable`.)
+#
+# The preview is bottom-anchored so you see what the tab was last doing. fzf always
+# renders a preview from its first line, so "scroll to the end" is really "feed it
+# exactly as many lines as the window is tall" -- hence tail -n $FZF_PREVIEW_LINES
+# (which fzf exports as the window's true height). `nowrap` is part of the same
+# mechanism, not cosmetic: with wrapping on, one long line renders as several rows
+# and pushes that many lines of the newest output back off the bottom.
 selection=$(
     printf '%s\n' "$rows" | fzf \
+        --with-shell='sh -c' \
         --ansi \
         --delimiter='\t' \
         --with-nth=1 \
@@ -85,9 +96,9 @@ selection=$(
         --header='enter jump · ctrl-r refresh preview · esc cancel' \
         --header-first \
         --color='fg+:#c0caf5,bg+:#292e42,hl:#7aa2f7,hl+:#7aa2f7,prompt:#7aa2f7,pointer:#7aa2f7,header:#565f89,border:#3b4261' \
-        --preview-window='down,60%,border-top' \
+        --preview-window='down,60%,border-top,nowrap' \
         --bind='ctrl-r:refresh-preview' \
-        --preview="[ -n {3} ] && \"$herdr\" pane read {3} --source recent-unwrapped --lines 200 --format ansi 2>/dev/null | tail -n 60"
+        --preview="[ -n {3} ] && \"$herdr\" pane read {3} --source recent-unwrapped --lines 200 --format ansi 2>/dev/null | tail -n \"\${FZF_PREVIEW_LINES:-40}\""
 ) || exit 0
 
 tab_id=$(printf '%s' "$selection" | cut -f2)
