@@ -7,6 +7,11 @@ platforms = ["macos", "linux"]
 
 # The picker itself. Runs as a session-modal popup so it never disturbs the
 # workspace layout — the herdr analogue of zellij's floating room.wasm pane.
+#
+# Rows are sorted by agent priority (blocked → done → working → idle → unknown)
+# by default; ctrl-s cycles through status/position/name/cwd inside the picker.
+# To pin a different order, set TAB_JUMP_SORT in the command below, e.g.
+#   command = ["sh", "-c", 'TAB_JUMP_SORT=position exec "$HERDR_PLUGIN_ROOT/jump.sh"']
 [[panes]]
 id = "picker"
 title = "Jump to tab"

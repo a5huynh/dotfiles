@@ -33,6 +33,9 @@ MARKS="${TAB_STATUS_MARKS-}"
 # It has to be independent of MARKS: deriving the strip set from MARKS means
 # TAB_STATUS_MARKS='{}' has nothing to strip with, so the uninstall path would
 # silently leave every marker in place. Add to this list, never remove.
+#
+# Mirrored by `def unmark` in plugins/tab-jump/jump.sh, which strips these back
+# off the label so the picker does not render the glyph twice. Keep in sync.
 GLYPHS='["▲","✓"]'
 
 herdr="${HERDR_BIN_PATH:-herdr}"
