@@ -19,7 +19,16 @@
  *   us is claude-opus-5 at max thinking.
  *
  * Local changes from upstream:
- *   - (none to this file yet)
+ *   - MAX_CARD_LINES 5 -> 10, and the prompt's line budget now derives from that
+ *     constant. Upstream asked the model for "6-8 lines" then capped at 5, so a
+ *     well-behaved summary was always truncated. One constant now, so the two
+ *     cannot drift apart again.
+ *   - capLines counts only non-blank lines. Markdown puts a blank line between
+ *     blocks, so blank lines were eating the budget: a 5-line cap rendered as
+ *     heading / blank / one point / blank / truncated, i.e. ~2 lines of content.
+ *   - Prompt forbids a title, and stripTitle drops one if the model emits it
+ *     anyway. The card already renders a bold "Recap · <time>" header, so a
+ *     model-authored "Recap" heading both duplicated it and cost a line.
  *
  * Card background: the renderer below uses theme.bg('customMessageBg'), which is
  * the only knob available — theme.bg() accepts just 8 named tokens, none of them
@@ -51,7 +60,7 @@ function configPath(): string {
 const ENTRY_TYPE = 'recap';
 const TICK_MS = 30_000;
 const MIN_BRANCH_LEN = 4;
-const MAX_CARD_LINES = 5;
+const MAX_CARD_LINES = 10;
 
 let lastActivity = Date.now();
 let firedThisIdle = false;
@@ -116,7 +125,8 @@ function summaryPrompt(conversation: string): string {
   return [
     'Summarize this conversation so far as a concise recap.',
     'Include goals, key decisions, progress, and open items.',
-    'Be terse — at most 6-8 lines. Use short markdown headings.',
+    `Be terse — at most ${MAX_CARD_LINES} lines. Use short markdown headings.`,
+    'Do not add a title or top-level heading; the card is already labelled "Recap".',
     'Skip preamble; lead with the substance.',
     '',
     '<conversation>',
@@ -125,10 +135,34 @@ function summaryPrompt(conversation: string): string {
   ].join('\n');
 }
 
+// Only non-blank lines count toward `max`. Markdown separates blocks with blank
+// lines, so counting them spent the budget on structure rather than content.
 function capLines(text: string, max: number): string {
+  const out: string[] = [];
+  let kept = 0;
+  for (const line of text.split('\n')) {
+    if (line.trim()) {
+      if (kept === max) return out.join('\n').trimEnd() + ' …';
+      kept++;
+    }
+    out.push(line);
+  }
+  return out.join('\n').trimEnd();
+}
+
+// The card renders its own bold "Recap · <time>" header, so a model-emitted
+// title duplicates it and costs a line. The prompt says not to; this enforces it
+// for the times the model does it anyway. Matches `# Recap`, `**Recap**`, etc.
+function stripTitle(text: string): string {
   const lines = text.split('\n');
-  if (lines.length <= max) return text;
-  return lines.slice(0, max).join('\n') + ' …';
+  let i = 0;
+  while (i < lines.length && !lines[i].trim()) i++;
+  if (i < lines.length && /^(#{1,6}\s*)?\*{0,2}recap\*{0,2}\s*:?\s*$/i.test(lines[i].trim())) {
+    lines.splice(0, i + 1);
+    while (lines.length && !lines[0].trim()) lines.shift();
+    return lines.join('\n');
+  }
+  return text;
 }
 
 async function generateSummary(ctx: import('@earendil-works/pi-coding-agent').ExtensionContext): Promise<string> {
@@ -208,7 +242,7 @@ export default function (pi: ExtensionAPI) {
       const bg = (s: string) => theme.bg('customMessageBg', s);
       const box = new Box(1, 0, (s) => bg(dim(s)));
       box.addChild(new Text(dim(theme.bold('Recap')) + dim(` · ${new Date(data.ts).toLocaleTimeString()}`), 0, 0));
-      box.addChild(new Markdown(capLines(data.summary, MAX_CARD_LINES), 0, 0, getMarkdownTheme()));
+      box.addChild(new Markdown(capLines(stripTitle(data.summary), MAX_CARD_LINES), 0, 0, getMarkdownTheme()));
       return box;
     });
 
