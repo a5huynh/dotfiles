@@ -29,6 +29,12 @@
  *   - Prompt forbids a title, and stripTitle drops one if the model emits it
  *     anyway. The card already renders a bold "Recap · <time>" header, so a
  *     model-authored "Recap" heading both duplicated it and cost a line.
+ *   - Rules above and below the card, and Box paddingY 0 -> 1. Both rules are
+ *     tinted with the card background so the whole thing reads as one block.
+ *     DynamicBorder is given an explicit colour fn on purpose: its docstring
+ *     warns that the module-global `theme` can be undefined in extensions,
+ *     because jiti loads them with a separate module cache. The renderer's own
+ *     `theme` argument is a real instance, so it is the safe source.
  *
  * Card background: the renderer below uses theme.bg('customMessageBg'), which is
  * the only knob available — theme.bg() accepts just 8 named tokens, none of them
@@ -40,8 +46,8 @@
  */
 import { uuidv7 } from '@earendil-works/pi-ai';
 import { complete } from '@earendil-works/pi-ai/compat';
-import { getAgentDir, getMarkdownTheme, type ExtensionAPI } from '@earendil-works/pi-coding-agent';
-import { Box, Markdown, Text } from '@earendil-works/pi-tui';
+import { DynamicBorder, getAgentDir, getMarkdownTheme, type ExtensionAPI } from '@earendil-works/pi-coding-agent';
+import { Box, Container, Markdown, Text } from '@earendil-works/pi-tui';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -240,10 +246,19 @@ export default function (pi: ExtensionAPI) {
       // Theme-aware bg: same token pi's own summary cards (compaction, branch)
       // use, so the card stands out appropriately in every theme.
       const bg = (s: string) => theme.bg('customMessageBg', s);
-      const box = new Box(1, 0, (s) => bg(dim(s)));
+      // Tinted so the rules join the card into one block instead of floating
+      // on the terminal background. Box paddingY=1 adds a bg-filled blank line
+      // inside each rule, so the text is not jammed against them.
+      const rule = (s: string) => bg(theme.fg('borderMuted', s));
+      const box = new Box(1, 1, (s) => bg(dim(s)));
       box.addChild(new Text(dim(theme.bold('Recap')) + dim(` · ${new Date(data.ts).toLocaleTimeString()}`), 0, 0));
       box.addChild(new Markdown(capLines(stripTitle(data.summary), MAX_CARD_LINES), 0, 0, getMarkdownTheme()));
-      return box;
+
+      const card = new Container();
+      card.addChild(new DynamicBorder(rule));
+      card.addChild(box);
+      card.addChild(new DynamicBorder(rule));
+      return card;
     });
 
     timer = setInterval(() => {
