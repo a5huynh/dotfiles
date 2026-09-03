@@ -29,6 +29,10 @@
  *   - Prompt forbids a title, and stripTitle drops one if the model emits it
  *     anyway. The card already renders a bold "Recap · <time>" header, so a
  *     model-authored "Recap" heading both duplicated it and cost a line.
+ *   - The "Recap · <time>" header is inlined into the top rule (TitledRule)
+ *     rather than occupying its own line, which is one line back on a 10-line
+ *     budget. DynamicBorder cannot do this — it takes only a colour function
+ *     and fills the whole width — so the top rule is a small local component.
  *   - Rules above and below the card, and Box paddingY 0 -> 1. Both rules are
  *     tinted with the card background so the whole thing reads as one block.
  *     DynamicBorder is given an explicit colour fn on purpose: its docstring
@@ -47,7 +51,7 @@
 import { uuidv7 } from '@earendil-works/pi-ai';
 import { complete } from '@earendil-works/pi-ai/compat';
 import { DynamicBorder, getAgentDir, getMarkdownTheme, type ExtensionAPI } from '@earendil-works/pi-coding-agent';
-import { Box, Container, Markdown, Text } from '@earendil-works/pi-tui';
+import { Box, type Component, Container, Markdown, visibleWidth } from '@earendil-works/pi-tui';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -156,6 +160,35 @@ function capLines(text: string, max: number): string {
   return out.join('\n').trimEnd();
 }
 
+// Leading '─' run before the label on the top rule.
+const RULE_LEAD = 2;
+
+// A horizontal rule with the title inlined, so the header costs no extra line:
+//   ── Recap · 4:49:05 PM ────────────────────────────────────────────
+// The label carries ANSI (dim + bold), so the fill is measured with
+// visibleWidth; .length would count escape bytes and truncate the rule.
+class TitledRule implements Component {
+  constructor(
+    private readonly label: string,
+    private readonly glyph: (s: string) => string,
+    private readonly bg: (s: string) => string,
+  ) {}
+
+  invalidate(): void {}
+
+  render(width: number): string[] {
+    const text = ` ${this.label} `;
+    const textWidth = visibleWidth(text);
+    // Too narrow for the label: degrade to a plain rule rather than overflow
+    // the line, which would push the card wider than the viewport.
+    if (textWidth + RULE_LEAD + 1 > width) {
+      return [this.bg(this.glyph('─'.repeat(Math.max(1, width))))];
+    }
+    const tail = width - RULE_LEAD - textWidth;
+    return [this.bg(this.glyph('─'.repeat(RULE_LEAD)) + text + this.glyph('─'.repeat(tail)))];
+  }
+}
+
 // The card renders its own bold "Recap · <time>" header, so a model-emitted
 // title duplicates it and costs a line. The prompt says not to; this enforces it
 // for the times the model does it anyway. Matches `# Recap`, `**Recap**`, etc.
@@ -249,15 +282,15 @@ export default function (pi: ExtensionAPI) {
       // Tinted so the rules join the card into one block instead of floating
       // on the terminal background. Box paddingY=1 adds a bg-filled blank line
       // inside each rule, so the text is not jammed against them.
-      const rule = (s: string) => bg(theme.fg('borderMuted', s));
+      const glyph = (s: string) => theme.fg('borderMuted', s);
+      const label = dim(theme.bold('Recap')) + dim(` · ${new Date(data.ts).toLocaleTimeString()}`);
       const box = new Box(1, 1, (s) => bg(dim(s)));
-      box.addChild(new Text(dim(theme.bold('Recap')) + dim(` · ${new Date(data.ts).toLocaleTimeString()}`), 0, 0));
       box.addChild(new Markdown(capLines(stripTitle(data.summary), MAX_CARD_LINES), 0, 0, getMarkdownTheme()));
 
       const card = new Container();
-      card.addChild(new DynamicBorder(rule));
+      card.addChild(new TitledRule(label, glyph, bg));
       card.addChild(box);
-      card.addChild(new DynamicBorder(rule));
+      card.addChild(new DynamicBorder((s) => bg(glyph(s))));
       return card;
     });
 
