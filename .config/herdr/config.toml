@@ -69,9 +69,26 @@ pi = [
 # which also omits both fields: these workspaces are plain directories, not git
 # worktrees, so herdr has no git state to report. Re-adding either from the
 # default config just costs a blank line per space.
+#
+# $agents is not a built-in — the space-row built-ins are only state_icon,
+# state_text, workspace, branch and git_status. It is a custom metadata token
+# reported by plugins/space-agents/, which counts the agents in each workspace.
+# If that plugin is ever unlinked this token simply renders empty, so the row
+# degrades to the plain "state_icon workspace" it was before.
+#
+# Dimmest color in the file, one rung below the sidebar agent rows' "context"
+# blue: a count is the least identifying thing in the row, and state_icon
+# already carries the part that wants your eye. #737aa2 is overlay1 from
+# [theme.custom] below, ~4:1 on the panel. dim = false for the same reason it
+# is set on every other token here — omitting it inherits the contextual
+# default, which is dim, and would drop this to an unreadable ~2:1.
 [ui.sidebar.spaces]
 row_gap = 0
-rows = [["state_icon", "workspace"]]
+rows = [[
+  "state_icon",
+  "workspace",
+  { token = "$agents", fg = "#737aa2", dim = false },
+]]
 
 [ui.toast]
 # Desktop notification when a background agent pane finishes or is blocked.
