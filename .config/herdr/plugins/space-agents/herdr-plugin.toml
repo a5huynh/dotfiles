@@ -1,0 +1,64 @@
+id = "space-agents"
+name = "Space Agents"
+version = "0.1.0"
+min_herdr_version = "0.8.0"
+description = "Show how many agents are open in each workspace in the spaces sidebar"
+platforms = ["macos", "linux"]
+
+# herdr has no built-in sidebar token for an agent count. The space-row
+# built-ins are exactly state_icon, state_text, workspace, branch and
+# git_status -- WorkspaceInfo does carry pane_count and tab_count over the API,
+# but neither is exposed to the row layout, and neither counts *agents* anyway.
+#
+# The supported escape hatch is workspace metadata: values reported through
+# `herdr workspace report-metadata --token NAME=VALUE` render as a `$NAME`
+# token in a row layout. So this plugin computes the count and reports it, and
+# ../../config.toml renders it as `$agents`.
+
+[[actions]]
+id = "sync"
+title = "Sync workspace agent counts"
+description = "Recount agents in every workspace and report them as metadata"
+contexts = ["global"]
+command = ["sh", "-c", 'exec "$HERDR_PLUGIN_ROOT/count.sh"']
+
+# Workspace metadata is display-only *runtime* state -- it does not survive a
+# server restart or a session restore. Without this hook a restored session
+# would show no counts at all until an agent happened to be detected or a pane
+# happened to close, which can be a long time on a session you are only
+# reading. Event hooks alone are repair-on-change; this is the initial paint.
+[[startup]]
+command = ["sh", "-c", 'exec "$HERDR_PLUGIN_ROOT/count.sh"']
+
+# Deliberately NOT hooked to pane.agent_status_changed, which is the busiest
+# event herdr emits (every agent, every turn) and cannot change a *count*.
+# These four are the only things that move an agent in or out of a workspace.
+#
+# As in plugins/tab-status, event hooks run a `command` directly -- they cannot
+# reference an [[actions]] id -- so the command is duplicated rather than
+# delegating, and the action above is kept as the manual entrypoint
+# (`herdr plugin action invoke sync`), since `herdr plugin log list` captures
+# actions but not startup or event hooks.
+#
+# The script recounts *every* workspace from a fresh snapshot rather than
+# acting on the event payload, so it is correct regardless of which pane fired
+# and self-heals if an event is missed entirely.
+[[events]]
+on = "pane.agent_detected"
+command = ["sh", "-c", 'exec "$HERDR_PLUGIN_ROOT/count.sh"']
+
+[[events]]
+on = "pane.closed"
+command = ["sh", "-c", 'exec "$HERDR_PLUGIN_ROOT/count.sh"']
+
+# A pane whose process exits usually keeps its slot but drops out of the agent
+# list, so the count changes without pane.closed ever firing.
+[[events]]
+on = "pane.exited"
+command = ["sh", "-c", 'exec "$HERDR_PLUGIN_ROOT/count.sh"']
+
+# `herdr pane move` relocates a live agent between workspaces, which changes
+# two counts at once -- the only event here that does.
+[[events]]
+on = "pane.moved"
+command = ["sh", "-c", 'exec "$HERDR_PLUGIN_ROOT/count.sh"']
