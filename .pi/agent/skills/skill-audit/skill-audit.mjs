@@ -43,7 +43,7 @@ const HOSTS = {
 
 const USAGE = `Usage:
   skill-audit.mjs catalog [--host pi|claude|both] [--dir PATH] [--json]
-  skill-audit.mjs overlap [--host …] [--threshold 0.5] [--json]
+  skill-audit.mjs overlap [--host …] [--threshold 0.75] [--json]
   skill-audit.mjs route <prompt...> [--host …] [--json]
   skill-audit.mjs audit  [--prompts FILE] [--host …] [--json]
 
@@ -205,6 +205,14 @@ export function parseFrontmatter(text) {
 
 // -------------------------------------------------------------- catalog
 
+// Third-party SKILL.md content reaches two sinks: a skill name is interpolated into the
+// model's *instruction* channel in cmdOverlap, and a description is printed straight to a
+// terminal by cmdCatalog. The scanned directories hold brew-owned, npx-installed and
+// externally managed skills, so constrain both here at the boundary rather than at each
+// point of use. Real skill names already sit inside this character set.
+const safeName = (s) => String(s).replace(/[^\w.-]+/g, "-").slice(0, 64) || "unnamed";
+const sanitizeText = (s) => String(s).replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
+
 function readSkillDir(dir, host) {
   const found = [];
   let entries;
@@ -227,7 +235,7 @@ function readSkillDir(dir, host) {
     try { fm = parseFrontmatter(readFileSync(md, "utf8")); } catch { continue; }
     if (!fm || !fm.description) continue;
     found.push({
-      name: fm.name || e.name,
+      name: safeName(fm.name || e.name),
       dir: e.name,
       host,
       path: md,
@@ -235,7 +243,7 @@ function readSkillDir(dir, host) {
       // routing conflict is noise. Note this is the hyphenated key; peon-ping's underscored
       // `user_invocable` is a different thing (it gates the *user*, not the model).
       modelInvocable: String(fm["disable-model-invocation"] ?? "").trim() !== "true",
-      description: fm.description.replace(/\s+/g, " ").trim(),
+      description: sanitizeText(fm.description),
     });
   }
   return found.sort((a, b) => a.name.localeCompare(b.name));
@@ -361,15 +369,17 @@ async function cmdOverlap(skills) {
   });
 
   const answers = await askChunked(catalogState(skills), questions);
-  const rows = pairs
-    .map(([a, b], idx) => ({ a: a.name, b: b.name, noul: answers[`p${idx}`]?.noul ?? null }))
-    .filter((r) => r.noul !== null)
-    .sort((x, y) => y.noul - x.noul);
+  const scored = pairs.map(([a, b], idx) => ({ a: a.name, b: b.name, noul: answers[`p${idx}`]?.noul ?? null }));
+  const rows = scored.filter((r) => r.noul !== null).sort((x, y) => y.noul - x.noul);
+  // A pair with no answer is "not checked", not "no overlap". Dropping it silently under a
+  // header that still claims the full count turns an incomplete run into a clean bill of
+  // health — and a green gate. Report it, and exit non-zero.
+  const unchecked = scored.length - rows.length;
 
   const flagged = rows.filter((r) => r.noul >= opts.threshold);
   if (opts.json) {
-    console.log(JSON.stringify({ threshold: opts.threshold, pairs: rows, flagged: flagged.length, usage: { requests, input_tokens: totalIn } }, null, 2));
-    return flagged.length ? 1 : 0;
+    console.log(JSON.stringify({ threshold: opts.threshold, pairs: rows, flagged: flagged.length, unchecked, usage: { requests, input_tokens: totalIn } }, null, 2));
+    return flagged.length || unchecked ? 1 : 0;
   }
 
   console.log(C.bold(`\nPairwise overlap — ${skills.length} skills, ${pairs.length} pairs\n`));
@@ -381,13 +391,14 @@ async function cmdOverlap(skills) {
     console.log(`  ${val}  ${mark}  ${r.a.padEnd(w)}  ${C.dim("↔")}  ${r.b}`);
   }
   if (rows.length > shown.length) console.log(C.dim(`  … ${rows.length - shown.length} more below threshold`));
+  if (unchecked) console.log(C.red(`\n  ${unchecked} pair(s) NOT CHECKED — no answer returned for them`));
   console.log(
     flagged.length
       ? C.yellow(`\n  ${flagged.length} pair(s) at or above ${opts.threshold} — descriptions may need disambiguating\n`)
       : C.green(`\n  no pairs at or above ${opts.threshold}\n`),
   );
   reportUsage();
-  return flagged.length ? 1 : 0;
+  return flagged.length || unchecked ? 1 : 0;
 }
 
 function routeQuestions(skills) {
@@ -459,14 +470,21 @@ async function cmdAudit(skills, promptsFile) {
   if (!Array.isArray(cases)) fail("prompts file must be a JSON array");
 
   const known = new Set(skills.map((s) => s.name));
-  for (const c of cases) {
-    if (c.expect && !known.has(c.expect)) fail(`prompts file expects unknown skill "${c.expect}"`);
-  }
+  cases.forEach((c, idx) => {
+    if (!c || typeof c !== "object" || Array.isArray(c)) fail(`prompts[${idx}] is not an object`);
+    // `prompt` was previously unvalidated while `expect` was, so a typo'd key crashed on
+    // r.prompt.slice() at render time — after the API call had already been paid for.
+    if (typeof c.prompt !== "string" || !c.prompt.trim()) fail(`prompts[${idx}] has no non-empty "prompt" string`);
+    if (c.expect && !known.has(c.expect)) fail(`prompts[${idx}] expects unknown skill "${c.expect}"`);
+  });
 
   const results = [];
   for (const c of cases) {
     const r = await routeOne(skills, c.prompt);
-    const expect = c.expect ?? null;
+    // `||`, not `??`: an empty-string expect is falsy so it skips the known-skill check
+    // above, and `??` would let it through as "" — an expectation no winner can ever equal,
+    // reported forever as a mismatch.
+    const expect = c.expect || null;
     const fired = r.winner && r.winner !== NONE;
     let verdict;
     if (expect === null) verdict = fired ? "false-fire" : "ok";

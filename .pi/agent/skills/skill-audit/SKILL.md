@@ -57,7 +57,8 @@ about 1.5 seconds rather than 253 round-trips.
 
 ```bash
 node ~/.pi/agent/skills/skill-audit/skill-audit.mjs route "review PR 983" --host both
-node ~/.pi/agent/skills/skill-audit/skill-audit.mjs audit --prompts prompts.example.json
+node ~/.pi/agent/skills/skill-audit/skill-audit.mjs \
+  audit --prompts ~/.pi/agent/skills/skill-audit/prompts.example.json
 ```
 
 `route` prints the full probability distribution for a prompt. `audit` runs a prompt file
@@ -71,6 +72,8 @@ Prompts file is a JSON array of `{"prompt": "...", "expect": "skill-name" | null
 `null` means no skill should fire.
 
 Exit status is **1** when `overlap` or `audit` finds a problem, so it can gate a commit.
+A pair the API returned no answer for is reported as `NOT CHECKED` and also exits 1 — an
+incomplete run must not read as a clean bill of health.
 
 ## Reading the numbers
 
@@ -95,6 +98,10 @@ the *user*, not the model, and is deliberately not treated the same way.
 | `--max-desc N` | Truncate descriptions to N chars (default `0`, no limit) |
 | `--chunk N` | Max questions per request (default `40`) |
 | `--include-manual` | Keep `disable-model-invocation: true` skills |
+
+Skill names and descriptions are read from third-party `SKILL.md` files, so names are
+constrained to `[\w.-]` and control characters are stripped from both — a name reaches the
+model's *instruction* channel, and a description gets printed straight to your terminal.
 | `--json` | Machine-readable output |
 
 ## Testing
