@@ -1,0 +1,16 @@
+[
+  { "prompt": "review my diff before I push", "expect": "review" },
+  { "prompt": "review PR 983", "expect": "review-pr" },
+  { "prompt": "is barfly.com still available?", "expect": "dnsimple" },
+  { "prompt": "file a ticket for the login crash", "expect": "plane" },
+  { "prompt": "what does Apple say about touch target sizes on iOS?", "expect": "hig" },
+  { "prompt": "spin up a worktree so I can work on two branches at once", "expect": "worktrunk" },
+  { "prompt": "what changed in SwiftUI for iOS 27?", "expect": "swiftui-whats-new-27" },
+  { "prompt": "look up the signature of std::fs::read_to_string", "expect": "docs" },
+  { "prompt": "why did order 8a3f-2b1c fail?", "expect": "investigate-zinc-order" },
+  { "prompt": "quiz me on how the herdr plugin system works", "expect": "socratic-tutor" },
+  { "prompt": "mute the peon sounds", "expect": "peon-ping-toggle" },
+  { "prompt": "what's the capital of France?", "expect": null },
+  { "prompt": "rename this variable to userCount", "expect": null },
+  { "prompt": "add a trailing newline to config.fish", "expect": null }
+]
