@@ -70,24 +70,48 @@ pi = [
 # worktrees, so herdr has no git state to report. Re-adding either from the
 # default config just costs a blank line per space.
 #
-# $agents is not a built-in — the space-row built-ins are only state_icon,
-# state_text, workspace, branch and git_status. It is a custom metadata token
-# reported by plugins/space-agents/, which counts the agents in each workspace.
-# If that plugin is ever unlinked this token simply renders empty, so the row
-# degrades to the plain "state_icon workspace" it was before.
+# $agents is not a built-in — the space-row built-ins are still only state_icon,
+# state_text, workspace, branch and git_status, verified against 0.9.1 (`rows`
+# rejects anything else with "unknown sidebar token; custom tokens must start
+# with `$`"). 0.9 added a `machine` token, but to the *agent* rows only. So this
+# stays a custom metadata token reported by plugins/space-agents/, which counts
+# the agents in each workspace. If that plugin is ever unlinked the token simply
+# renders empty and the row degrades to the "state_icon workspace" it was before.
 #
-# Dimmest color in the file, one rung below the sidebar agent rows' "context"
-# blue: a count is the least identifying thing in the row, and state_icon
-# already carries the part that wants your eye. #737aa2 is overlay1 from
-# [theme.custom] below, ~4:1 on the panel. dim = false for the same reason it
-# is set on every other token here — omitting it inherits the contextual
+# Base color is the dimmest in the file, one rung below the sidebar agent rows'
+# "context" blue: a count is the least identifying thing in the row, and
+# state_icon already carries the part that wants your eye. #737aa2 is overlay1
+# from [theme.custom] below, ~4:1 on the panel. dim = false for the same reason
+# it is set on every other token here — omitting it inherits the contextual
 # default, which is dim, and would drop this to an unreadable ~2:1.
+#
+# `rules` (herdr 0.9+) colors the count by threshold, which is what lets
+# space-agents emit a *bare* number: the `·` prefix that used to keep it from
+# reading as a workspace number would break these rules, since gt/lt are numeric
+# and "·7" does not parse as a number — it would validate and then never match.
+#
+# Three traps here, all verified with `herdr config check` against a sandboxed
+# HOME rather than a live session:
+#   - Order is highest-threshold-first, and the FIRST matching rule wins — this
+#     was confirmed by observation (a workspace of 8 rendered red, not yellow),
+#     since it is not recoverable from the binary. A value of 7 satisfies both
+#     rules below, so the ordering is load-bearing, not cosmetic: reversed, the
+#     red rule would be unreachable and every busy space would read yellow.
+#   - Each rule takes EXACTLY ONE of equals/contains/starts_with/gt/lt. Zero
+#     conditions or two conditions is a *file-level* TOML error: herdr reports
+#     "; using defaults" and discards every customization in this file, not just
+#     this token. A typo here costs the whole config, silently.
+#   - herdr ≤ 0.8 rejects the `rules` key the same file-level way, so every
+#     machine sharing this repo must be on 0.9+ before this is committed.
 [ui.sidebar.spaces]
 row_gap = 0
 rows = [[
   "state_icon",
   "workspace",
-  { token = "$agents", fg = "#737aa2", dim = false },
+  { token = "$agents", fg = "#737aa2", dim = false, rules = [
+    { gt = 5, fg = "#f7768e" },  # crowded — tokyo-night red
+    { gt = 2, fg = "#e0af68" },  # busy — tokyo-night yellow
+  ] },
 ]]
 
 [ui.toast]
