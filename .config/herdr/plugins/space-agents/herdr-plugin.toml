@@ -1,7 +1,13 @@
 id = "space-agents"
 name = "Space Agents"
 version = "0.1.0"
-min_herdr_version = "0.8.0"
+# 0.9.0 for the value-based sidebar `rules` that ../../config.toml uses to color
+# this plugin's count by threshold. The script itself would run on 0.8, but it
+# now emits a bare number instead of a `"·"`-prefixed one, and without the
+# threshold colors that number is ambiguous against the workspace number the
+# sidebar also shows. 0.8 additionally rejects the `rules` key as a file-level
+# error and falls back to stock defaults.
+min_herdr_version = "0.9.0"
 description = "Show how many agents are open in each workspace in the spaces sidebar"
 platforms = ["macos", "linux"]
 
@@ -9,6 +15,8 @@ platforms = ["macos", "linux"]
 # built-ins are exactly state_icon, state_text, workspace, branch and
 # git_status -- WorkspaceInfo does carry pane_count and tab_count over the API,
 # but neither is exposed to the row layout, and neither counts *agents* anyway.
+# Still true as of 0.9.1: `pane_count` and `agent_count` are both rejected in a
+# space row as unknown tokens, so this plugin is not obsoleted by 0.9.
 #
 # The supported escape hatch is workspace metadata: values reported through
 # `herdr workspace report-metadata --token NAME=VALUE` render as a `$NAME`

@@ -13,22 +13,18 @@
 #   SPACE_AGENTS_SNAPSHOT=file.json  read a snapshot from disk instead of herdr
 set -euo pipefail
 
-# Prefixed onto the count so it does not read as a workspace number, which the
-# sidebar also shows. herdr's own glyph vocabulary is no help here: it is
-# ◉ blocked / ● done / ○ idle, all of which are *status* marks, so borrowing
-# one would claim a state rather than a quantity -- ● in particular already
-# means "done" both in herdr and in plugins/tab-jump/jump.sh. `·` is used by
-# herdr purely as a separator, is single-width, and needs no Nerd Font.
+# Empty as of herdr 0.9. The count used to be prefixed with `·` so it did not
+# read as a workspace number, which the sidebar also shows. 0.9 adds value-based
+# `rules` to sidebar tokens, and its gt/lt conditions are *numeric*: "·7" does
+# not parse as a number, so such a rule validates cleanly and then silently
+# never matches. ../../config.toml now colors the count by threshold instead,
+# which does the disambiguating the glyph did and hands back a column of a
+# 32-wide sidebar -- the same width constraint that shapes plugins/tab-status.
 #
-# Single-width is the constraint, as in plugins/tab-status: sidebar_width is 32
-# and an emoji would cost 2 cells of a name field that is already tight.
-#
-# Drop this on herdr 0.9.0. It adds value-based `rules` to sidebar tokens, but
-# gt/lt are numeric and "·7" does not parse as a number -- the rules validate
-# fine and then never match. A bare count plus threshold colors disambiguates
-# better than a glyph and costs one column less. See CLAUDE.md.
+# Setting SPACE_AGENTS_PREFIX restores a prefix, at the cost of the threshold
+# colors: any non-numeric character makes every gt/lt rule fail to match, and
+# the token falls back to its base fg.
 PREFIX="${SPACE_AGENTS_PREFIX-}"
-[ -n "$PREFIX" ] || PREFIX="·"
 
 # Identifies us as the reporting source so our tokens can be cleared again
 # without disturbing metadata reported by anything else. Must be ASCII
