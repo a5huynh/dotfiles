@@ -61,6 +61,20 @@
  *   - capLines counts only non-blank lines. Markdown puts a blank line between
  *     blocks, so blank lines were eating the budget: a 5-line cap rendered as
  *     heading / blank / one point / blank / truncated, i.e. ~2 lines of content.
+ *   - The recap ends with a "Next steps" section, and it is budgeted and capped
+ *     *separately* (NEXT_STEPS_LINES on top of the body budget) rather than
+ *     sharing one cap. capLines truncates from the end and next steps are by
+ *     definition last, so a single budget would drop the most actionable part of
+ *     the card first, and only on the dense recaps where it matters most. The
+ *     section is omitted entirely when nothing is pending — a permanent "nothing
+ *     to do" stub would cost a line of a 6-line card every time — which is also
+ *     why a heading the model emits with no items under it is dropped rather
+ *     than rendered as a dangling header.
+ *   - MAX_WIDGET_LINES stays 6 for the *body*, so the open card grew by the
+ *     next-steps block. That is affordable only because the card collapses:
+ *     ctrl+shift+r gives the rows back without losing the recap.
+ *   - The section is split off by heading text, taking the *last* match, so a
+ *     "next steps" heading the model repeats cannot swallow the body behind it.
  *   - Prompt forbids a title, and stripTitle drops one if the model emits it
  *     anyway. The card already renders a bold "Recap · <time>" header, so a
  *     model-authored "Recap" heading both duplicated it and cost a line.
@@ -136,6 +150,14 @@ const MAX_CARD_LINES = 10;
 // Transcript space is free; editor space is not. A widget this tall already
 // pushes the editor down a third of a small terminal.
 const MAX_WIDGET_LINES = 6;
+// The "Next steps" block, budgeted on top of the body caps above: a heading
+// plus NEXT_STEPS_ACTIONS bullets. Separate from the body budget on purpose —
+// see the header note; a shared cap truncates exactly this section away.
+const NEXT_STEPS_LINES = 3;
+const NEXT_STEPS_ACTIONS = NEXT_STEPS_LINES - 1;
+// Matches `## Next steps`, `**Next steps**`, `Next Steps:`, etc. — the same
+// latitude stripTitle allows, since the model's heading style is not fixed.
+const NEXT_STEPS_HEADING = /^(#{1,6}\s*)?\*{0,2}next\s+steps\*{0,2}\s*:?\s*$/i;
 
 let lastActivity = Date.now();
 let firedThisIdle = false;
@@ -212,6 +234,7 @@ function buildConversation(entries: Entry[]): string {
  * Ask for what the active surface can actually show. Widget-only means 6 lines,
  * so requesting 10 would spend tokens on text `capLines` then throws away.
  * "both" takes the larger budget — the transcript copy is the uncut one.
+ * This is the *body* budget; the next-steps block is allowed on top of it.
  */
 function lineBudget(cfg: Config): number {
   return cfg.surface === 'widget' ? MAX_WIDGET_LINES : MAX_CARD_LINES;
@@ -225,10 +248,41 @@ function summaryPrompt(conversation: string, budget: number): string {
     'Do not add a title or top-level heading; the card is already labelled "Recap".',
     'Skip preamble; lead with the substance.',
     '',
+    `Then end with a "Next steps" heading followed by at most ${NEXT_STEPS_ACTIONS} bullets naming the`,
+    'next concrete actions, as imperatives ("Run the tests", not "The tests could be run").',
+    'These lines are extra — they do not count against the limit above.',
+    'If nothing is genuinely pending, omit the section entirely rather than inventing filler.',
+    '',
     '<conversation>',
     conversation,
     '</conversation>',
   ].join('\n');
+}
+
+/**
+ * Split a trailing "Next steps" section off the body. The *last* heading wins,
+ * so a model that repeats it cannot leave the body stranded inside the tail.
+ * A heading with no content under it yields no tail at all — the card must not
+ * show a dangling header when the model announces a section and then omits it.
+ */
+function splitNextSteps(text: string): { body: string; next: string } {
+  const lines = text.split('\n');
+  const at = lines.reduce((found, line, i) => (NEXT_STEPS_HEADING.test(line.trim()) ? i : found), -1);
+  if (at === -1) return { body: text, next: '' };
+  const next = lines.slice(at);
+  if (!next.slice(1).some((line) => line.trim())) return { body: lines.slice(0, at).join('\n'), next: '' };
+  return { body: lines.slice(0, at).join('\n'), next: next.join('\n') };
+}
+
+/**
+ * Cap body and next steps against their own budgets, so a verbose body cannot
+ * consume the section that says what to do next.
+ */
+function capCard(text: string, bodyMax: number, nextMax: number): string {
+  const { body, next } = splitNextSteps(text);
+  const capped = capLines(body, bodyMax);
+  if (!next) return capped;
+  return `${capped}\n\n${capLines(next, nextMax)}`;
 }
 
 // Only non-blank lines count toward `max`. Markdown separates blocks with blank
@@ -303,7 +357,7 @@ function buildCard(summary: string, ts: number, theme: Theme, maxLines: number):
   const glyph = (s: string) => theme.fg('borderMuted', s);
   const label = dim(theme.bold('Recap')) + dim(` · ${new Date(ts).toLocaleTimeString()}`);
   const box = new Box(1, 1, (s) => bg(dim(s)));
-  box.addChild(new Markdown(capLines(stripTitle(summary), maxLines), 0, 0, getMarkdownTheme()));
+  box.addChild(new Markdown(capCard(stripTitle(summary), maxLines, NEXT_STEPS_LINES), 0, 0, getMarkdownTheme()));
 
   const card = new Container();
   card.addChild(new TitledRule(label, glyph, bg));

@@ -419,6 +419,87 @@ test("the prompt asks for what the active surface can show", async () => {
 	assert.match(h.prompt(), /at most 10 lines/, '"both" writes the uncut copy to the transcript');
 });
 
+test("the prompt asks for next steps, off-budget and omittable", async () => {
+	config({});
+	const h = host();
+	await h.start();
+	await h.command();
+
+	assert.match(h.prompt(), /"Next steps"/, "the section has to be asked for by name");
+	assert.match(h.prompt(), /at most 2 bullets/, "bounded, or it eats the card");
+	assert.match(h.prompt(), /do not count against the limit/, "body budget must not be spent on it");
+	assert.match(h.prompt(), /omit the section entirely/, "no filler when nothing is pending");
+});
+
+test("next steps survive a body long enough to blow the budget", async () => {
+	// The regression this guards: one shared cap truncates from the end, so the
+	// section would vanish exactly on the dense recaps where it is most useful.
+	config({});
+	provider.state.reply = [
+		...Array.from({ length: 20 }, (_, i) => `- point ${i + 1}`),
+		"",
+		"## Next steps",
+		"",
+		"- Run the tests",
+	].join("\n");
+	const h = host();
+	await h.start();
+	await h.command();
+
+	const text = h.widgetText();
+	assert.match(text, /Next steps/, "the section must outlive the body it follows");
+	assert.match(text, /Run the tests/, "including its actions");
+	assert.match(text, /…/, "the body is what gets cut");
+	provider.state.reply = SUMMARY;
+});
+
+test("an over-long next steps list is capped too", async () => {
+	config({});
+	provider.state.reply = [
+		"## Goals",
+		"",
+		"- Ship it",
+		"",
+		"## Next steps",
+		"",
+		...Array.from({ length: 9 }, (_, i) => `- action ${i + 1}`),
+	].join("\n");
+	const h = host();
+	await h.start();
+	await h.command();
+
+	const body = bodyLines(h.widget());
+	assert.ok(body.length <= 3 + 3 + 1, `next steps must not grow without bound, got ${body.length} lines`);
+	assert.match(h.widgetText(), /action 1/, "the first actions are the ones kept");
+	provider.state.reply = SUMMARY;
+});
+
+test("a next steps heading with nothing under it is dropped", async () => {
+	config({});
+	provider.state.reply = `${SUMMARY}\n\n## Next steps\n`;
+	const h = host();
+	await h.start();
+	await h.command();
+
+	const text = h.widgetText();
+	assert.ok(!/Next steps/.test(text), `a dangling header costs a line and says nothing:\n${text}`);
+	assert.match(text, /Goals/, "the body is untouched");
+	provider.state.reply = SUMMARY;
+});
+
+test("a repeated next steps heading cannot strand the body", async () => {
+	config({});
+	provider.state.reply = ["## Next steps", "", "- Draft it", "", "## Next steps", "", "- Land it"].join("\n");
+	const h = host();
+	await h.start();
+	await h.command();
+
+	const text = h.widgetText();
+	assert.match(text, /Draft it/, "content before the last heading stays in the body");
+	assert.match(text, /Land it/);
+	provider.state.reply = SUMMARY;
+});
+
 test("the widget body is capped at the widget budget, counting only content", async () => {
 	config({});
 	provider.state.reply = Array.from({ length: 20 }, (_, i) => `- point ${i + 1}\n`).join("\n");
