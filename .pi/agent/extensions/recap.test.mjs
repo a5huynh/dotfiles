@@ -62,9 +62,10 @@ writeFileSync(
 	join(AI, "compat.mjs"),
 	[
 		"export const calls = [];",
-		"export const state = { reply: '' };",
+		"export const state = { reply: '', during: null };",
 		"export async function complete(model, request, options) {",
 		"  calls.push({ model, request, options });",
+		"  if (state.during) await state.during(options);",
 		"  return { content: [{ type: 'text', text: state.reply }] };",
 		"}",
 		"",
@@ -154,7 +155,10 @@ function host({ mode = "tui", branch = BRANCH } = {}) {
 			getApiKeyAndHeaders: async () => ({ ok: true, apiKey: "test-key" }),
 		},
 		sessionManager: { getBranch: () => branch },
-		isIdle: () => true,
+		idle: true,
+		isIdle() {
+			return this.idle;
+		},
 		ui: {
 			notify: (message, level) => seen.notices.push({ message, level }),
 			setWidget: (key, content, options) => seen.widgets.push({ key, content, options }),
@@ -560,6 +564,60 @@ test("an empty summary surfaces nothing at all", async () => {
 	assert.equal(h.widget(), null);
 	assert.equal(h.seen.entries.length, 0);
 	provider.state.reply = SUMMARY;
+});
+
+test("/recap while the agent is working generates nothing", async () => {
+	config({ surface: "both" });
+	const h = host();
+	await h.start();
+	h.ctx.idle = false;
+	const before = provider.calls.length;
+	await h.command();
+
+	assert.equal(provider.calls.length, before, "no LLM call while working");
+	assert.equal(h.widget(), null);
+	assert.equal(h.seen.entries.length, 0);
+	assert.match(h.seen.notices.at(-1).message, /working/, "and it says why");
+});
+
+test("the shortcut will not generate while working, but still toggles an existing card", async () => {
+	config({});
+	const h = host();
+	await h.start();
+	h.ctx.idle = false;
+	const before = provider.calls.length;
+	await h.shortcut();
+	assert.equal(provider.calls.length, before, "no recap yet, and none generated");
+	assert.equal(h.widget(), null);
+
+	h.ctx.idle = true;
+	await h.command();
+	h.ctx.idle = false;
+	await h.shortcut();
+	assert.equal(h.widget().length, 1, "an existing card still closes while working");
+	assert.equal(provider.calls.length, before + 1);
+});
+
+test("a run that starts mid-generation aborts the call and discards the recap", async () => {
+	config({ surface: "both" });
+	const h = host();
+	await h.start();
+	let signal;
+	provider.state.during = async (options) => {
+		signal = options.signal;
+		h.ctx.idle = false;
+		await h.fire("before_agent_start");
+	};
+	try {
+		await h.command();
+	} finally {
+		provider.state.during = null;
+	}
+
+	assert.equal(signal?.aborted, true, "the in-flight call is aborted");
+	assert.equal(h.widget(), null, "no card over the new run");
+	assert.equal(h.seen.entries.length, 0, "and no transcript entry mid-turn");
+	assert.equal(h.seen.notices.at(-1).message, "Generating recap...", "dropped silently: the user just sent a prompt");
 });
 
 test("non-tui modes get no widget, since there is nowhere to draw it", async () => {
