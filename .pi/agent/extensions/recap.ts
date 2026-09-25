@@ -54,6 +54,13 @@
  *   - The idle timer fires against the newest ctx any handler has seen, not the
  *     one captured at session_start: every getter on a ctx throws once its
  *     session is replaced, and a 30s interval outlives the session it started in.
+ *   - No recap is generated while the agent is working, on any path. Upstream
+ *     checked isIdle only on the idle timer, and only *before* the LLM call, so
+ *     `/recap` and ctrl+shift+r ran mid-turn, and a prompt sent during the few
+ *     seconds of generation still got a recap dropped on top of the new run (a
+ *     transcript entry written mid-turn, with surface "transcript"). A run now
+ *     bumps `runEpoch` and aborts the in-flight call, and the result is
+ *     discarded if the epoch moved. Toggling an *existing* card stays allowed.
  *   - MAX_CARD_LINES 5 -> 10, and the prompt's line budget now derives from that
  *     constant. Upstream asked the model for "6-8 lines" then capped at 5, so a
  *     well-behaved summary was always truncated. One constant now, so the two
@@ -173,6 +180,14 @@ let widgetOpen = false;
  * on the stale object throws, while the interval keeps ticking.
  */
 let ctxRef: ExtensionContext | null = null;
+/**
+ * Bumped whenever an agent run starts or the session is replaced. A recap takes
+ * seconds to generate; one whose epoch moved underneath it describes a
+ * conversation that has since moved on and must be dropped, not shown mid-turn.
+ */
+let runEpoch = 0;
+/** The in-flight summary call, aborted when a run starts so it stops spending tokens. */
+let inflight: AbortController | null = null;
 
 function readConfig(): Config {
   try {
@@ -430,7 +445,7 @@ function setWidgetOpen(ctx: ExtensionContext, next: boolean | 'toggle'): boolean
   return true;
 }
 
-async function generateSummary(ctx: ExtensionContext): Promise<string> {
+async function generateSummary(ctx: ExtensionContext, signal: AbortSignal): Promise<string> {
   const cfg = readConfig();
   const configuredModel =
     cfg.model && typeof cfg.model.provider === 'string' && typeof cfg.model.id === 'string'
@@ -465,6 +480,7 @@ async function generateSummary(ctx: ExtensionContext): Promise<string> {
       ...(auth.apiKey !== undefined && { apiKey: auth.apiKey }),
       ...(auth.headers !== undefined && { headers: auth.headers }),
       ...(auth.env !== undefined && { env: auth.env }),
+      signal,
       reasoningEffort: 'low',
       cacheRetention: 'none',
       sessionId: uuidv7(),
@@ -476,8 +492,41 @@ async function generateSummary(ctx: ExtensionContext): Promise<string> {
     .join('\n');
 }
 
-async function injectRecap(ctx: ExtensionContext) {
-  const summary = await generateSummary(ctx);
+/**
+ * Generate and surface a recap, but never while the agent is working. That is
+ * checked twice: before the call, and again after it, since a run can start
+ * during the seconds the summary takes. `manual` says whether someone asked
+ * (and so deserves to hear why nothing appeared) or the idle timer fired.
+ */
+async function injectRecap(ctx: ExtensionContext, manual: boolean) {
+  if (!ctx.isIdle()) {
+    if (manual) ctx.ui.notify('recap: agent is working, try again once it settles', 'info');
+    return;
+  }
+  if (manual) ctx.ui.notify('Generating recap...', 'info');
+
+  const epoch = runEpoch;
+  const controller = new AbortController();
+  inflight?.abort();
+  inflight = controller;
+  let summary: string;
+  try {
+    summary = await generateSummary(ctx, controller.signal);
+  } catch (error) {
+    if (controller.signal.aborted) summary = '';
+    else throw error;
+  } finally {
+    if (inflight === controller) inflight = null;
+  }
+
+  // Epoch first: if the session was replaced, `ctx` is stale and isIdle throws.
+  // A moved epoch is also silent: the ctx may be unsafe, and the user has
+  // just sent a prompt, so nothing is lost by not announcing the drop.
+  if (epoch !== runEpoch || controller.signal.aborted) return;
+  if (!ctx.isIdle()) {
+    if (manual) ctx.ui.notify('recap: discarded, agent is busy', 'info');
+    return;
+  }
   if (!summary) return;
   const ts = Date.now();
   const surface = readConfig().surface;
@@ -498,13 +547,17 @@ async function maybeFire(ctx: ExtensionContext) {
   if (Date.now() - lastActivity < cfg.idleMinutes * 60_000) return;
   if (ctx.sessionManager.getBranch().length < MIN_BRANCH_LEN) return;
   firedThisIdle = true;
-  await injectRecap(ctx);
+  await injectRecap(ctx, false);
 }
 
 export default function (pi: ExtensionAPI) {
   piRef = pi;
 
   pi.on('session_start', async (_e, ctx) => {
+    // Before the mode gate: a recap in flight for the old session must be
+    // dropped whatever mode the new one runs in.
+    runEpoch++;
+    inflight?.abort();
     if (ctx.mode !== 'tui') return;
     ctxRef = ctx;
     lastActivity = Date.now();
@@ -532,6 +585,8 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.on('before_agent_start', async (_e, ctx) => {
+    runEpoch++;
+    inflight?.abort();
     ctxRef = ctx;
     lastActivity = Date.now();
     firedThisIdle = false;
@@ -559,8 +614,7 @@ export default function (pi: ExtensionAPI) {
       if (setWidgetOpen(ctx, 'toggle')) return;
       // Nothing generated yet: the natural reading of "open the recap" is to
       // make one rather than report that there is none.
-      ctx.ui.notify('Generating recap...', 'info');
-      await injectRecap(ctx);
+      await injectRecap(ctx, true);
     },
   });
 
@@ -592,8 +646,7 @@ export default function (pi: ExtensionAPI) {
         return;
       }
 
-      ctx.ui.notify('Generating recap...', 'info');
-      await injectRecap(ctx);
+      await injectRecap(ctx, true);
     },
   });
 
