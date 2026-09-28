@@ -180,8 +180,12 @@ export default function (pi: ExtensionAPI) {
 
 					const top = fitBorder(topLeft, topRight, width, borderColor);
 					const bottom = fitBorder(bottomLeft, bottomRight, width, borderColor);
-					const content = lines.slice(1, lines.length - 1);
-					return [top, "", ...content, "", bottom];
+					// Autocomplete rows are appended after the bottom border; keep them below ours.
+					const acHeight = ((this as any).renderedAutocompleteHeight as number | undefined) ?? 0;
+					const borderIndex = lines.length - 1 - acHeight;
+					const content = lines.slice(1, borderIndex);
+					const autocomplete = lines.slice(borderIndex + 1);
+					return [top, "", ...content, "", bottom, ...autocomplete];
 				} catch {
 					return lines;
 				}
