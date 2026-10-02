@@ -19,8 +19,8 @@ Dependency management (use these by default):
 - Prefer the standard library or existing project dependencies when possible.
 
 ## Environment
-- Terminal: Ghostty (truecolor). Multiplexer: Zellij.
-- No background bash — for long-running processes, run them in a Zellij pane so I can observe/interact.
+- Terminal: Ghostty (truecolor). Multiplexer: herdr.
+- No background bash — for long-running processes, run them in a herdr pane so I can observe/interact.
 - GitHub via the `gh` CLI.
 
 ## Git & PRs
