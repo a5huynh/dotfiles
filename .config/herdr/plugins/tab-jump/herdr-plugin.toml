@@ -10,6 +10,7 @@ platforms = ["macos", "linux"]
 #
 # Rows are sorted by agent priority (blocked → done → working → idle → unknown)
 # by default; ctrl-s cycles through status/position/name/cwd inside the picker.
+# ctrl-t sends the highlighted tab to another (or a new) workspace via move.sh.
 # To pin a different order, set TAB_JUMP_SORT in the command below, e.g.
 #   command = ["sh", "-c", 'TAB_JUMP_SORT=position exec "$HERDR_PLUGIN_ROOT/jump.sh"']
 [[panes]]

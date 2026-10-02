@@ -6,6 +6,8 @@
 #   TAB_JUMP_SORT=<status|position|name|cwd>   initial order (default: status)
 #   ctrl-s inside the picker cycles through them
 #
+# ctrl-t sends the highlighted tab to another workspace (see move.sh).
+#
 # Internal entrypoints, used by fzf's reload binding:
 #   --rows [SORT]   print the TSV rows for one sort order and exit
 #   --cycle         print the fzf actions that advance to the next sort order
@@ -181,6 +183,78 @@ for dep in jq fzf; do
     exit 1
 done
 
+# Second stage of ctrl-t: pick a destination workspace. Prints move.sh's summary
+# on success; returns non-zero when cancelled or when the move fails, after
+# showing the error and waiting for a key (the popup would otherwise swallow it).
+send_tab() {
+    local tab_id="$1" info rows header out query pick dest label
+    info=$(snapshot | jq -c --arg t "$tab_id" '
+        .result.snapshot as $s
+        | ($s.tabs[] | select(.tab_id == $t)) as $tab
+        | ($s.workspaces[] | select(.workspace_id == $tab.workspace_id)) as $src
+        | {
+            tab: ($tab.label // $tab.tab_id),
+            src: ($src.label // $src.workspace_id),
+            last: ([$s.tabs[] | select(.workspace_id == $tab.workspace_id)] | length) == 1,
+            rows: (
+              [ $s.workspaces[]
+                | select(.workspace_id != $tab.workspace_id)
+                | "\u001b[38;2;86;95;137m\(.number)\u001b[0m \(.label // .workspace_id)\t\(.workspace_id)" ]
+              + ["\u001b[38;2;158;206;106m+\u001b[0m new workspace\t--new"]
+            )
+          }') || return 1
+    [ -n "$info" ] || return 1
+
+    rows=$(jq -r '.rows[]' <<<"$info")
+    header="send $(jq -r '.tab' <<<"$info") from $(jq -r '.src' <<<"$info") · type a new name to create a workspace"
+    # Moving the last pane out of a workspace closes it.
+    [ "$(jq -r '.last' <<<"$info")" = true ] &&
+        header+=$'\n\033[38;2;224;175;104m'"last tab in $(jq -r '.src' <<<"$info") -- that workspace will close"$'\033[0m'
+
+    # accept-or-print-query: with no match fzf prints just the query, so a
+    # second output line means "picked a row" and a lone line means "create a
+    # workspace with this name".
+    out=$(
+        printf '%s\n' "$rows" | fzf \
+            --ansi \
+            --delimiter='\t' \
+            --with-nth=1 \
+            --layout=reverse \
+            --info=hidden \
+            --border=none \
+            --print-query \
+            --bind='enter:accept-or-print-query' \
+            --prompt='send to › ' \
+            --pointer='▌' \
+            --header="$header" \
+            --header-first \
+            --color='fg+:#c0caf5,bg+:#292e42,hl:#7aa2f7,hl+:#7aa2f7,prompt:#7aa2f7,pointer:#7aa2f7,header:#565f89'
+    ) || return 1
+    query=$(sed -n 1p <<<"$out")
+    pick=$(sed -n 2p <<<"$out")
+
+    if [ -n "$pick" ]; then
+        dest=$(cut -f2 <<<"$pick")
+        label=""
+    else
+        [ -n "$query" ] || return 1
+        dest="--new"
+        label="$query"
+    fi
+
+    if ! out=$("$(dirname "$self")/move.sh" "$tab_id" "$dest" ${label:+"$label"} 2>&1); then
+        printf '%s\n(press any key)\n' "$out" >&2
+        read -r -n 1 -s
+        return 1
+    fi
+    printf '%s' "$out" | tail -n 1
+}
+
+header_keys='enter jump · ctrl-t send to workspace · ctrl-s sort · ctrl-r refresh preview · esc cancel'
+notice=""
+
+while :; do
+
 rows=$(rows_for "$sort_mode")
 
 [ -n "$rows" ] || exit 0
@@ -199,7 +273,7 @@ rows=$(rows_for "$sort_mode")
 # (which fzf exports as the window's true height). `nowrap` is part of the same
 # mechanism, not cosmetic: with wrapping on, one long line renders as several rows
 # and pushes that many lines of the newest output back off the bottom.
-selection=$(
+out=$(
     printf '%s\n' "$rows" | fzf \
         --with-shell='sh -c' \
         --ansi \
@@ -210,8 +284,9 @@ selection=$(
         --border=none \
         --prompt="jump $sort_mode › " \
         --pointer='▌' \
-        --header='enter jump · ctrl-s sort · ctrl-r refresh preview · esc cancel' \
+        --header="${notice:+$notice$'\n'}$header_keys" \
         --header-first \
+        --expect=ctrl-t \
         --color='fg+:#c0caf5,bg+:#292e42,hl:#7aa2f7,hl+:#7aa2f7,prompt:#7aa2f7,pointer:#7aa2f7,header:#565f89,border:#3b4261' \
         --preview-window='down,60%,border-top,nowrap' \
         --bind='ctrl-r:refresh-preview' \
@@ -219,8 +294,17 @@ selection=$(
         --preview="[ -n {3} ] && \"$herdr\" pane read {3} --source recent-unwrapped --lines 200 --format ansi 2>/dev/null | tail -n \"\${FZF_PREVIEW_LINES:-40}\""
 ) || exit 0
 
-tab_id=$(printf '%s' "$selection" | cut -f2)
+key=$(sed -n 1p <<<"$out")
+tab_id=$(sed -n 2p <<<"$out" | cut -f2)
 [ -n "$tab_id" ] || exit 0
+
+# A send loops back to the list (refreshed, with the result on top) so several
+# tabs can be moved in one go; enter falls through to the jump.
+[ "$key" = ctrl-t ] || break
+notice=$(send_tab "$tab_id") || notice=""
+[ -n "$notice" ] && notice=$'\033[38;2;158;206;106m'"$notice"$'\033[0m'
+
+done
 
 # Focusing has to happen *after* this popup is torn down (the teardown restores
 # focus to the pane that was active before, which would undo the jump), so it
