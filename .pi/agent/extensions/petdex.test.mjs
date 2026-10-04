@@ -304,22 +304,57 @@ test("a replaced session stops the old heartbeat and posts under the new id", as
 	assert.ok(bubbles().filter((b) => b.session_id === old).length === 1);
 });
 
-test("the first prompt becomes the card title, and later ones do not churn it", async () => {
+test("the card title follows the latest prompt", async () => {
 	const h = host();
 	h.fire("input", { text: "Review the auth refactor" });
 	h.fire("input", { text: "now the tests" });
 	h.tool("bash", { command: "x" });
 	await settle();
-	assert.equal(lastBubble().title, "Review the auth refactor");
-	assert.equal(lastBubble().title_source, "prompt");
+	assert.equal(lastBubble().title, "now the tests");
+	// A `prompt` title is sticky in the app: it would never replace the first.
+	assert.equal(lastBubble().title_source, undefined, "must not send a sticky title source");
 });
 
-test("a resumed session recovers its title from the entries", async () => {
-	const h = host({ entries: [{ type: "message", message: { role: "user", content: [{ type: "text", text: "Ship the notes" }] } }] });
+test("PI_PETDEX_TITLE=first pins the first prompt", async () => {
+	process.env.PI_PETDEX_TITLE = "first";
+	try {
+		const h = host();
+		h.fire("input", { text: "Review the auth refactor" });
+		h.fire("input", { text: "now the tests" });
+		h.tool("bash", { command: "x" });
+		await settle();
+		assert.equal(lastBubble().title, "Review the auth refactor");
+		assert.equal(lastBubble().title_source, "prompt");
+	} finally {
+		delete process.env.PI_PETDEX_TITLE;
+	}
+});
+
+const resumedEntries = [
+	{ type: "message", message: { role: "user", content: [{ type: "text", text: "Ship the notes" }] } },
+	{ type: "message", message: { role: "assistant", content: [{ type: "text", text: "done" }] } },
+	{ type: "message", message: { role: "user", content: "and bump the version" } },
+];
+
+test("a resumed session recovers its latest prompt as the title", async () => {
+	const h = host({ entries: resumedEntries });
 	h.fire("session_start", { reason: "resume" });
 	h.tool("bash", { command: "x" });
 	await settle();
-	assert.equal(lastBubble().title, "Ship the notes");
+	assert.equal(lastBubble().title, "and bump the version");
+});
+
+test("a resumed session recovers its first prompt under PI_PETDEX_TITLE=first", async () => {
+	process.env.PI_PETDEX_TITLE = "first";
+	try {
+		const h = host({ entries: resumedEntries });
+		h.fire("session_start", { reason: "resume" });
+		h.tool("bash", { command: "x" });
+		await settle();
+		assert.equal(lastBubble().title, "Ship the notes");
+	} finally {
+		delete process.env.PI_PETDEX_TITLE;
+	}
 });
 
 test("control characters never reach the bubble", async () => {

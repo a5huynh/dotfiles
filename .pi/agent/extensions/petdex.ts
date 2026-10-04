@@ -96,7 +96,7 @@ type Update = {
 type Session = {
 	id: string;
 	cwd: string;
-	/** The session's first prompt, as the card title. */
+	/** The card title: the latest prompt, or the first under PI_PETDEX_TITLE=first. */
 	title?: string;
 	/** Serializes this session's posts so they land in the order they were made. */
 	chain: Promise<void>;
@@ -181,8 +181,18 @@ function elapsed(ms: number): string {
 	return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m`;
 }
 
-/** The first user prompt of an already-populated session, for resume and /reload. */
-function firstPrompt(ctx: ExtensionContext): string | undefined {
+/**
+ * The card title follows the latest prompt, so it says what the session is on
+ * *now*; `PI_PETDEX_TITLE=first` pins the first, as session-title.ts does for
+ * the herdr sidebar (which wants a stable label, not a current one).
+ */
+function titleMode(): "first" | "last" {
+	return process.env.PI_PETDEX_TITLE === "first" ? "first" : "last";
+}
+
+/** The title prompt of an already-populated session, for resume and /reload. */
+function promptFromEntries(ctx: ExtensionContext): string | undefined {
+	let found: string | undefined;
 	try {
 		for (const entry of ctx.sessionManager.getEntries() ?? []) {
 			const record = entry as { type?: string; message?: { role?: string; content?: unknown } };
@@ -200,13 +210,14 @@ function firstPrompt(ctx: ExtensionContext): string | undefined {
 								.join(" ")
 						: "";
 			if (flatten(text)) {
-				return clip(text, 60);
+				found = clip(text, 60);
+				if (titleMode() === "first") break;
 			}
 		}
 	} catch {
 		// A stale or headless session manager has nothing to offer.
 	}
-	return undefined;
+	return found;
 }
 
 // -------------------------------------------------------------- network ----
@@ -272,7 +283,10 @@ async function post(session: Session, update: Update): Promise<void> {
 		if (update.messageKind) bubble.message_kind = update.messageKind;
 		if (session.title) {
 			bubble.title = session.title;
-			bubble.title_source = "prompt";
+			// The app makes a `prompt` title sticky: it only fills a card that has
+			// none (`.prompt => slot.title_len == 0`). Omitting the source (`unknown`)
+			// lets each new prompt replace it, so it is sent only to pin the first.
+			if (titleMode() === "first") bubble.title_source = "prompt";
 		}
 		if (session.cwd) bubble.source_cwd = session.cwd;
 		const pane = process.env.HERDR_PANE_ID;
@@ -331,7 +345,7 @@ export default function (pi: ExtensionAPI) {
 		current = {
 			id,
 			cwd: ctx.cwd ?? "",
-			title: firstPrompt(ctx),
+			title: promptFromEntries(ctx),
 			chain: Promise.resolve(),
 			lastSentAt: 0,
 			prompts: 0,
@@ -421,7 +435,7 @@ export default function (pi: ExtensionAPI) {
 		const session = sessionFor(ctx);
 		if (!session) return;
 		const prompt = typeof event?.text === "string" ? clip(event.text, 60) : "";
-		if (prompt && !session.title) session.title = prompt;
+		if (prompt && (titleMode() === "last" || !session.title)) session.title = prompt;
 		urgent(session, {
 			state: "jumping",
 			duration: 900,
