@@ -35,6 +35,9 @@ brew "vim"
 # Needs `wt config shell install` once, which writes functions/wt.fish +
 # completions/wt.fish; without it `wt switch` cannot cd.
 brew "worktrunk"
+# desktop pet that reacts to agent activity — driven by the petdex.ts pi
+# extension over its local hook server (127.0.0.1:7777)
+cask "petdex"
 
 # -------------------------------------
 # Editors
