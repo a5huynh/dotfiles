@@ -5,7 +5,12 @@ import {
 	type KeybindingsManager,
 } from "@earendil-works/pi-coding-agent";
 import type { Component, EditorTheme, TUI } from "@earendil-works/pi-tui";
-import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { matchesKey, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+
+// Published by next-prompt.ts; duplicated rather than imported so neither extension loads the other.
+const SUGGESTION_CHANNEL = "next-prompt:suggestion";
+// The fake cursor Editor draws at the end of an empty line; ghost text goes right after it.
+const EMPTY_CURSOR = "\x1b[7m \x1b[0m";
 
 function fitBorder(
 	left: string,
@@ -84,6 +89,13 @@ export default function (pi: ExtensionAPI) {
 	let activeTui: TUI | undefined;
 	let sessionGeneration = 0;
 	const spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+	let suggestion: string | null = null;
+
+	pi.events.on(SUGGESTION_CHANNEL, (data) => {
+		const text = (data as { text?: unknown } | undefined)?.text;
+		suggestion = typeof text === "string" && text ? text : null;
+		activeTui?.requestRender();
+	});
 
 	const stopSpinner = () => {
 		if (spinnerTimer) {
@@ -158,6 +170,34 @@ export default function (pi: ExtensionAPI) {
 				activeTui = tui;
 			}
 
+			/** Ghost text shows only in an empty editor with no autocomplete open, so Tab/→ have nothing else to do. */
+			private ghost(): string | null {
+				if (!suggestion || !isCurrent() || this.getText() !== "" || this.isShowingAutocomplete()) return null;
+				return suggestion;
+			}
+
+			handleInput(data: string): void {
+				const ghost = this.ghost();
+				if (ghost && (matchesKey(data, "tab") || matchesKey(data, "right"))) {
+					suggestion = null;
+					this.setText(ghost);
+					activeTui?.requestRender();
+					return;
+				}
+				super.handleInput(data);
+			}
+
+			private withGhost(line: string, ghost: string, width: number): string {
+				const at = line.indexOf(EMPTY_CURSOR);
+				if (at === -1) return line;
+				const prefix = line.slice(0, at + EMPTY_CURSOR.length);
+				const room = width - visibleWidth(prefix) - 1;
+				if (room < 4) return line;
+				const text = ctx.ui.theme.fg("dim", truncateToWidth(ghost, room, "…"));
+				const body = prefix + text;
+				return body + " ".repeat(Math.max(0, width - visibleWidth(body)));
+			}
+
 			render(width: number): string[] {
 				const lines = super.render(width);
 				if (lines.length < 2) return lines;
@@ -184,6 +224,8 @@ export default function (pi: ExtensionAPI) {
 					const acHeight = ((this as any).renderedAutocompleteHeight as number | undefined) ?? 0;
 					const borderIndex = lines.length - 1 - acHeight;
 					const content = lines.slice(1, borderIndex);
+					const ghost = this.ghost();
+					if (ghost && content.length > 0) content[0] = this.withGhost(content[0], ghost, width);
 					const autocomplete = lines.slice(borderIndex + 1);
 					return [top, "", ...content, "", bottom, ...autocomplete];
 				} catch {
