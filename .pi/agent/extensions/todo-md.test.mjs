@@ -82,7 +82,15 @@ const tui = { requestRender() {}, terminal: { columns: 80 } };
 
 /** One extension instance plus the host surface it talks to. */
 function host({ cwd = PROJECT, sessionId = "sess-1", mode = "tui" } = {}) {
-	const state = { widget: undefined, overlay: undefined, notices: [], handlers: new Map(), tools: new Map(), commands: new Map() };
+	const state = {
+		widget: undefined,
+		overlay: undefined,
+		notices: [],
+		handlers: new Map(),
+		tools: new Map(),
+		commands: new Map(),
+		shortcuts: new Map(),
+	};
 	let mounted;
 
 	const api = {
@@ -90,6 +98,7 @@ function host({ cwd = PROJECT, sessionId = "sess-1", mode = "tui" } = {}) {
 		on: (event, handler) => state.handlers.set(event, handler),
 		registerTool: (tool) => state.tools.set(tool.name, tool),
 		registerCommand: (name, command) => state.commands.set(name, command),
+		registerShortcut: (key, options) => state.shortcuts.set(key, options),
 	};
 	extension(api);
 
@@ -122,6 +131,13 @@ function host({ cwd = PROJECT, sessionId = "sess-1", mode = "tui" } = {}) {
 		ctx,
 		todo: (params) => state.tools.get("todo").execute("call-1", params, undefined, () => {}, ctx),
 		command: (args) => state.commands.get("todos").handler(args, ctx),
+		shortcut: () => state.shortcuts.get("ctrl+shift+t").handler(ctx),
+		/** Click the mounted widget, then re-render it the way the TUI would. */
+		click: (y) => {
+			const result = mounted?.handleMouse?.({ type: "click", button: "left", x: 0, y });
+			state.widget = mounted?.render(80);
+			return result;
+		},
 		unmount: () => mounted?.dispose?.(),
 	};
 }
@@ -365,22 +381,6 @@ test("two agents adding to one shared list lose nothing", async () => {
 	for (const agent of agents) agent.unmount();
 });
 
-// `null`, not `undefined` — a destructuring default would fill `undefined` back in.
-test("a session pi is not persisting falls back to memory", async () => {
-	const h = host({ sessionId: null });
-	const result = await h.todo({ action: "add", text: "no session" });
-	assert.equal(result.details.scope, "memory");
-	assert.ok(!existsSync(join(AGENT_DIR, "todos")));
-	h.unmount();
-});
-
-test("/todos renders the full list, /todos sessions lists the project's lists", async () => {
-	const mine = host({ sessionId: "sess-1" });
-	await mine.todo({ action: "add", text: "mine\nalso mine" });
-	await mine.todo({ action: "toggle", id: 1 });
-	const other = host({ sessionId: "sess-2" });
-	await other.todo({ action: "add", text: "theirs" });
-
 // Session lists take no lock, and every save in one process shared `<file>.<pid>.tmp`:
 // the first rename consumed it and the rest failed ENOENT, or lost their item.
 test("parallel calls on one session list neither fail nor lose updates", async () => {
@@ -399,6 +399,22 @@ test("parallel calls on one session list neither fail nor lose updates", async (
 	assert.ok(!readdirSync(dirname(sessionFile(PROJECT, "burst"))).some((f) => f.endsWith(".tmp")), "no stray temp files");
 	h.unmount();
 });
+
+// `null`, not `undefined` — a destructuring default would fill `undefined` back in.
+test("a session pi is not persisting falls back to memory", async () => {
+	const h = host({ sessionId: null });
+	const result = await h.todo({ action: "add", text: "no session" });
+	assert.equal(result.details.scope, "memory");
+	assert.ok(!existsSync(join(AGENT_DIR, "todos")));
+	h.unmount();
+});
+
+test("/todos renders the full list, /todos sessions lists the project's lists", async () => {
+	const mine = host({ sessionId: "sess-1" });
+	await mine.todo({ action: "add", text: "mine\nalso mine" });
+	await mine.todo({ action: "toggle", id: 1 });
+	const other = host({ sessionId: "sess-2" });
+	await other.todo({ action: "add", text: "theirs" });
 
 	await mine.command("");
 	const overlay = lines(mine.state.overlay);
@@ -425,6 +441,46 @@ test("/todos hide and show toggle the widget", async () => {
 	assert.equal(h.state.widget, undefined);
 	await h.command("show");
 	assert.match(lines(h.state.widget), /visible/);
+	h.unmount();
+});
+
+test("ctrl+shift+t and /todos toggle collapse the widget to one line", async () => {
+	const h = host();
+	await h.todo({ action: "add", text: "first\nsecond" });
+	await h.todo({ action: "start", id: 2 });
+	assert.equal(h.state.widget.length, 3);
+
+	await h.shortcut();
+	assert.equal(h.state.widget.length, 1);
+	const collapsed = lines(h.state.widget);
+	assert.match(collapsed, /^▸ ● 2 todos \(1 in progress, 1 open\) · ctrl\+shift\+t · \S #2 second…/);
+
+	// Collapsed survives a refresh from the tool.
+	await h.todo({ action: "add", text: "third" });
+	assert.equal(h.state.widget.length, 1);
+
+	await h.command("toggle");
+	assert.equal(h.state.widget.length, 4);
+
+	// Hidden comes back expanded, through either path.
+	await h.command("hide");
+	await h.shortcut();
+	assert.equal(h.state.widget.length, 4);
+	h.unmount();
+});
+
+test("a click toggles: anywhere when collapsed, only the header when open", async () => {
+	const h = host();
+	await h.todo({ action: "add", text: "a\nb" });
+
+	assert.equal(h.click(1), undefined, "a click in the body must not fold the list");
+	assert.equal(h.state.widget.length, 3);
+
+	assert.deepEqual(h.click(0), { handled: true, render: true });
+	assert.equal(h.state.widget.length, 1);
+
+	h.click(0);
+	assert.equal(h.state.widget.length, 3);
 	h.unmount();
 });
 

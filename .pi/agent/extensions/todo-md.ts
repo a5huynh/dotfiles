@@ -23,19 +23,38 @@
  *   - `todo` tool          — list / add / start / toggle / remove / clear_done
  *   - `/todos`             — full-list overlay
  *   - `/todos sessions`    — the project's other session lists
- *   - `/todos hide|show`   — toggle the always-on widget above the editor
+ *   - `/todos hide|show`   — remove / restore the always-on widget above the editor
+ *   - `/todos toggle`, ctrl+shift+t — collapse the widget to one line, or expand it
  *   - widget               — status glyphs, spinner on in-progress items
+ *
+ * A collapsed widget keeps its summary and whatever is in progress on one line,
+ * so it still answers "what is it doing" while giving the rows back. It also
+ * toggles on a click — anywhere when collapsed, only on the header when open, so
+ * selecting text in the list does not fold it — but only under
+ * `--tui-mode fullscreen`, since regular mode never captures the mouse; hence the
+ * key, and why the collapsed line advertises the key rather than a click. The
+ * click is handled by the widget itself, not a `MouseRegion` wrapper: that
+ * wrapper does not forward `dispose()`, and the spinner's interval is cleared
+ * there.
  */
 
 import { StringEnum } from "@earendil-works/pi-ai";
 import { getAgentDir, type ExtensionAPI, type ExtensionContext, type Theme } from "@earendil-works/pi-coding-agent";
-import { matchesKey, truncateToWidth, type Component, type TUI } from "@earendil-works/pi-tui";
+import {
+	matchesKey,
+	truncateToWidth,
+	type Component,
+	type TUI,
+	type TuiMouseEvent,
+	type TuiMouseEventResult,
+} from "@earendil-works/pi-tui";
 import { mkdir, readdir, readFile, rename, rm, rmdir, stat, unlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { Type } from "typebox";
 
 const WIDGET_KEY = "todo-md";
+const TOGGLE_KEY = "ctrl+shift+t";
 const CONFIG_FILENAME = "todo-md-config.json";
 const PROJECT_FILENAME = "todo.md";
 const SPINNER_INTERVAL_MS = 150;
@@ -488,6 +507,7 @@ class TodoWidget implements Component {
 	private frame = 0;
 	private timer: ReturnType<typeof setInterval> | undefined;
 	private cachedWidth?: number;
+	private cachedOpen?: boolean;
 	private cachedLines?: string[];
 	private readonly items: WidgetItem[];
 	private readonly counts: Counts;
@@ -500,6 +520,9 @@ class TodoWidget implements Component {
 		private target: Target,
 		private theme: Theme,
 		tui: TUI,
+		/** Read at render time, so a toggle needs a re-render, not a new widget. */
+		private isOpen: () => boolean = () => true,
+		private onToggle: () => void = () => {},
 	) {
 		this.items = sortTodos(items, cfg.sortOrder);
 		this.counts = count(items);
@@ -515,17 +538,39 @@ class TodoWidget implements Component {
 		}
 	}
 
+	handleMouse(event: TuiMouseEvent): TuiMouseEventResult | undefined {
+		if (event.type !== "click" || event.button !== "left") return undefined;
+		if (this.isOpen() && event.y !== 0) return undefined;
+		this.onToggle();
+		return { handled: true, render: true };
+	}
+
 	render(width: number): string[] {
-		if (!this.animated && this.cachedLines && this.cachedWidth === width) return this.cachedLines;
+		const open = this.isOpen();
+		if (!this.animated && this.cachedLines && this.cachedWidth === width && this.cachedOpen === open) {
+			return this.cachedLines;
+		}
 
 		const th = this.theme;
 		const g = this.cfg.glyphs;
 		const cut = (line: string) => truncateToWidth(line, width, g.truncation);
+		const spinner = g.spinner[this.frame % g.spinner.length];
 
 		const label = this.target.label && this.target.scope !== "session" ? th.fg("dim", ` · ${this.target.label}`) : "";
-		const lines: string[] = [
-			cut(`${th.fg("accent", g.header)} ${th.fg("accent", summarize(this.counts))}${label}`),
-		];
+		const header = `${th.fg("accent", g.header)} ${th.fg("accent", summarize(this.counts))}${label}`;
+
+		if (!open) {
+			const active = this.items.find((t) => t.status === "in_progress");
+			const current = active
+				? ` ${th.fg("dim", "·")} ${th.fg("accent", spinner)} ${th.fg("dim", `#${active.id}`)} ${th.fg("accent", active.text + g.trailingEllipsis)}`
+				: "";
+			// The key goes before the task text would be cut, never after: a hint that
+			// truncates away is no hint.
+			const lines = [cut(`${th.fg("dim", "▸")} ${header} ${th.fg("dim", `· ${TOGGLE_KEY}`)}${current}`)];
+			return this.remember(width, open, lines);
+		}
+
+		const lines: string[] = [cut(header)];
 
 		// Collapsing decides what goes in the list; the visible limit then applies
 		// to whatever remains.
@@ -542,7 +587,6 @@ class TodoWidget implements Component {
 
 		if (overflow && this.cfg.hiddenAt === "top") lines.push(overflow);
 
-		const spinner = g.spinner[this.frame % g.spinner.length];
 		for (const item of visible) {
 			const id = `#${item.id}`;
 			if (item.status === "completed") {
@@ -566,8 +610,13 @@ class TodoWidget implements Component {
 			);
 		}
 
+		return this.remember(width, open, lines);
+	}
+
+	private remember(width: number, open: boolean, lines: string[]): string[] {
 		if (!this.animated) {
 			this.cachedWidth = width;
+			this.cachedOpen = open;
 			this.cachedLines = lines;
 		}
 		return lines;
@@ -575,6 +624,7 @@ class TodoWidget implements Component {
 
 	invalidate(): void {
 		this.cachedWidth = undefined;
+		this.cachedOpen = undefined;
 		this.cachedLines = undefined;
 	}
 
@@ -730,6 +780,8 @@ const TodoParams = Type.Object({
 
 export default function (pi: ExtensionAPI) {
 	let widgetVisible = true;
+	/** Expanded list vs. one summary line; independent of `widgetVisible`. */
+	let widgetOpen = true;
 	const rootCache = new Map<string, string>();
 	/** When each in-progress item was first seen, keyed by `<file>\0<text>`. */
 	const progressStarts = new Map<string, number>();
@@ -800,7 +852,11 @@ export default function (pi: ExtensionAPI) {
 		}
 
 		const items = withStarts(file);
-		ctx.ui.setWidget(WIDGET_KEY, (tui, theme) => new TodoWidget(items, config, target, theme, tui), {
+		const isOpen = () => widgetOpen;
+		const onToggle = () => {
+			widgetOpen = !widgetOpen;
+		};
+		ctx.ui.setWidget(WIDGET_KEY, (tui, theme) => new TodoWidget(items, config, target, theme, tui, isOpen, onToggle), {
 			placement: "aboveEditor",
 		});
 	};
@@ -932,16 +988,35 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
+	/** Collapse or expand; a widget hidden with `/todos hide` comes back expanded. */
+	const toggleWidget = async (ctx: ExtensionContext): Promise<void> => {
+		if (widgetVisible) widgetOpen = !widgetOpen;
+		else widgetVisible = widgetOpen = true;
+		await refreshWidget(ctx);
+	};
+
+	pi.registerShortcut(TOGGLE_KEY, {
+		description: "Collapse/expand the todo widget",
+		handler: (ctx) => toggleWidget(ctx),
+	});
+
 	pi.registerCommand("todos", {
-		description: "Show this session's todo list (args: sessions | hide | show)",
+		description: "Show this session's todo list (args: sessions | toggle | hide | show)",
 		getArgumentCompletions: (prefix) =>
-			["sessions", "hide", "show"].filter((o) => o.startsWith(prefix)).map((o) => ({ value: o, label: o })),
+			["sessions", "toggle", "hide", "show"].filter((o) => o.startsWith(prefix)).map((o) => ({ value: o, label: o })),
 
 		handler: async (args, ctx) => {
 			const arg = args.trim();
 
+			if (arg === "toggle") {
+				await toggleWidget(ctx);
+				return;
+			}
+
 			if (arg === "hide" || arg === "show") {
 				widgetVisible = arg === "show";
+				// Showing means showing the list, not a collapsed line.
+				if (widgetVisible) widgetOpen = true;
 				await refreshWidget(ctx);
 				ctx.ui.notify(`todo widget ${widgetVisible ? "shown" : "hidden"}`, "info");
 				return;
