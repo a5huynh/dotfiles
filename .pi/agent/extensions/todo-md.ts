@@ -380,8 +380,29 @@ async function withLock<T>(path: string, fn: () => Promise<T>): Promise<T> {
 	}
 }
 
-const withTarget = <T>(target: Target, fn: () => Promise<T>): Promise<T> =>
-	target.shared && target.path ? withLock(target.path, fn) : fn();
+/** Tail of each list's in-process queue, keyed by path (`""` is the memory list). */
+const queues = new Map<string, Promise<unknown>>();
+
+/**
+ * Run one read-modify-write on `target`, after every earlier one in this process.
+ *
+ * The model issues `todo` calls in parallel, and a session list takes no file
+ * lock, so without this two calls each load the same list and the last save
+ * drops the other's edit.
+ */
+function withTarget<T>(target: Target, fn: () => Promise<T>): Promise<T> {
+	const key = target.path ?? "";
+	const run = () => (target.shared && target.path ? withLock(target.path, fn) : fn());
+	const result = (queues.get(key) ?? Promise.resolve()).then(run, run);
+	const tail = result.catch(() => {});
+	queues.set(key, tail);
+	void tail.then(() => {
+		if (queues.get(key) === tail) queues.delete(key);
+	});
+	return result;
+}
+
+let tmpSeq = 0;
 
 async function load(target: Target): Promise<TodoFile> {
 	const raw = target.path ? await readFile(target.path, "utf8").catch(() => undefined) : memoryContent;
@@ -409,7 +430,9 @@ async function save(file: TodoFile): Promise<void> {
 
 	await mkdir(dirname(target.path), { recursive: true });
 	// Rename, so a concurrent reader never sees a half-written list.
-	const tmp = `${target.path}.${process.pid}.tmp`;
+	// Unique per write: two in flight from one process once shared `<pid>.tmp`, and
+	// the first rename took it out from under the second (ENOENT).
+	const tmp = `${target.path}.${process.pid}.${++tmpSeq}.tmp`;
 	await writeFile(tmp, text, "utf8");
 	await rename(tmp, target.path);
 }
