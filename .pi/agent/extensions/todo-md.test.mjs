@@ -13,21 +13,34 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 // ------------------------------------------------------------- sandbox ----
 
-/** pi's package dir, found through the `pi` on PATH rather than a hardcoded prefix. */
+/**
+ * pi's package dir, found through the `pi` on PATH rather than a hardcoded prefix.
+ * A managed install puts a shell wrapper there (`~/.pi/agent/bin/pi`) that execs
+ * `install/releases/<current-version>/node_modules/.bin/pi`, so follow it.
+ */
 function findPiDir() {
-	const bin = realpathSync(execFileSync("sh", ["-c", "command -v pi"], { encoding: "utf8" }).trim());
+	let bin = realpathSync(execFileSync("sh", ["-c", "command -v pi"], { encoding: "utf8" }).trim());
+	const current = join(dirname(dirname(bin)), "install", "current-version");
+	if (existsSync(current)) {
+		const version = readFileSync(current, "utf8").trim();
+		bin = realpathSync(join(dirname(current), "releases", version, "node_modules", ".bin", "pi"));
+	}
 	const dir = dirname(dirname(dirname(bin))); // dist/bundle/cli.js -> package root
 	assert.ok(existsSync(join(dir, "package.json")), `pi package not found at ${dir}`);
 	return dir;
 }
 
 const PI_DIR = findPiDir();
+/** A dependency of pi's, nested under its package or hoisted beside it. */
+const dep = (name) =>
+	[join(PI_DIR, "node_modules", name), join(dirname(dirname(PI_DIR)), name)].find((p) => existsSync(p)) ??
+	assert.fail(`${name} not found beside pi at ${PI_DIR}`);
 const SANDBOX = mkdtempSync(join(tmpdir(), "todo-md-test-"));
 const AGENT_DIR = join(SANDBOX, "agent");
 const PROJECT = join(SANDBOX, "project");
@@ -36,24 +49,21 @@ mkdirSync(join(SANDBOX, "node_modules", "@earendil-works"), { recursive: true })
 mkdirSync(AGENT_DIR, { recursive: true });
 mkdirSync(PROJECT, { recursive: true });
 for (const pkg of ["pi-ai", "pi-tui"]) {
-	symlinkSync(join(PI_DIR, "node_modules", "@earendil-works", pkg), join(SANDBOX, "node_modules", "@earendil-works", pkg));
+	symlinkSync(dep(`@earendil-works/${pkg}`), join(SANDBOX, "node_modules", "@earendil-works", pkg));
 }
 symlinkSync(PI_DIR, join(SANDBOX, "node_modules", "@earendil-works", "pi-coding-agent"));
-symlinkSync(join(PI_DIR, "node_modules", "typebox"), join(SANDBOX, "node_modules", "typebox"));
+symlinkSync(dep("typebox"), join(SANDBOX, "node_modules", "typebox"));
 
-const SOURCE = join(import.meta.dirname, "todo-md.ts");
-const BUILT = join(SANDBOX, "todo-md.mjs");
-execFileSync(join(PI_DIR, "node_modules", ".bin", "esbuild"), [
-	SOURCE,
-	"--format=esm",
-	"--platform=node",
-	"--target=node22",
-	`--outfile=${BUILT}`,
-	"--log-level=error",
-]);
+// Loaded the way pi loads it: through pi's own jiti. Copied into the sandbox so
+// its imports resolve against the sandbox `node_modules`.
+const BUILT = join(SANDBOX, "todo-md.ts");
+writeFileSync(BUILT, readFileSync(join(import.meta.dirname, "todo-md.ts")));
 
 process.env.PI_CODING_AGENT_DIR = AGENT_DIR;
-const { default: extension } = await import(BUILT);
+const { createJiti } = await import(join(dep("jiti"), "lib", "jiti.mjs"));
+const extension = await createJiti(import.meta.url, { fsCache: false, moduleCache: false }).import(BUILT, {
+	default: true,
+});
 
 // ---------------------------------------------------------------- fakes ----
 
@@ -72,7 +82,15 @@ const tui = { requestRender() {}, terminal: { columns: 80 } };
 
 /** One extension instance plus the host surface it talks to. */
 function host({ cwd = PROJECT, sessionId = "sess-1", mode = "tui" } = {}) {
-	const state = { widget: undefined, overlay: undefined, notices: [], handlers: new Map(), tools: new Map(), commands: new Map() };
+	const state = {
+		widget: undefined,
+		overlay: undefined,
+		notices: [],
+		handlers: new Map(),
+		tools: new Map(),
+		commands: new Map(),
+		shortcuts: new Map(),
+	};
 	let mounted;
 
 	const api = {
@@ -80,6 +98,7 @@ function host({ cwd = PROJECT, sessionId = "sess-1", mode = "tui" } = {}) {
 		on: (event, handler) => state.handlers.set(event, handler),
 		registerTool: (tool) => state.tools.set(tool.name, tool),
 		registerCommand: (name, command) => state.commands.set(name, command),
+		registerShortcut: (key, options) => state.shortcuts.set(key, options),
 	};
 	extension(api);
 
@@ -112,6 +131,13 @@ function host({ cwd = PROJECT, sessionId = "sess-1", mode = "tui" } = {}) {
 		ctx,
 		todo: (params) => state.tools.get("todo").execute("call-1", params, undefined, () => {}, ctx),
 		command: (args) => state.commands.get("todos").handler(args, ctx),
+		shortcut: () => state.shortcuts.get("ctrl+shift+t").handler(ctx),
+		/** Click the mounted widget, then re-render it the way the TUI would. */
+		click: (y) => {
+			const result = mounted?.handleMouse?.({ type: "click", button: "left", x: 0, y });
+			state.widget = mounted?.render(80);
+			return result;
+		},
 		unmount: () => mounted?.dispose?.(),
 	};
 }
@@ -355,6 +381,25 @@ test("two agents adding to one shared list lose nothing", async () => {
 	for (const agent of agents) agent.unmount();
 });
 
+// Session lists take no lock, and every save in one process shared `<file>.<pid>.tmp`:
+// the first rename consumed it and the rest failed ENOENT, or lost their item.
+test("parallel calls on one session list neither fail nor lose updates", async () => {
+	const h = host({ sessionId: "burst" });
+	const results = await Promise.all(Array.from({ length: 8 }, (_, i) => h.todo({ action: "add", text: `t${i}` })));
+	for (const r of results) assert.ok(!r.isError, r.content?.[0]?.text);
+
+	const body = read(sessionFile(PROJECT, "burst"));
+	assert.equal(body.match(/- \[ \]/g).length, 8);
+
+	await Promise.all([h.todo({ action: "start", id: 1 }), h.todo({ action: "toggle", id: 2 }), h.todo({ action: "add", text: "late" })]);
+	const after = read(sessionFile(PROJECT, "burst"));
+	assert.match(after, /- \[\/\] t\d/);
+	assert.match(after, /- \[x\] t\d/);
+	assert.match(after, /- \[ \] late/);
+	assert.ok(!readdirSync(dirname(sessionFile(PROJECT, "burst"))).some((f) => f.endsWith(".tmp")), "no stray temp files");
+	h.unmount();
+});
+
 // `null`, not `undefined` — a destructuring default would fill `undefined` back in.
 test("a session pi is not persisting falls back to memory", async () => {
 	const h = host({ sessionId: null });
@@ -396,6 +441,46 @@ test("/todos hide and show toggle the widget", async () => {
 	assert.equal(h.state.widget, undefined);
 	await h.command("show");
 	assert.match(lines(h.state.widget), /visible/);
+	h.unmount();
+});
+
+test("ctrl+shift+t and /todos toggle collapse the widget to one line", async () => {
+	const h = host();
+	await h.todo({ action: "add", text: "first\nsecond" });
+	await h.todo({ action: "start", id: 2 });
+	assert.equal(h.state.widget.length, 3);
+
+	await h.shortcut();
+	assert.equal(h.state.widget.length, 1);
+	const collapsed = lines(h.state.widget);
+	assert.match(collapsed, /^▸ ● 2 todos \(1 in progress, 1 open\) · ctrl\+shift\+t · \S #2 second…/);
+
+	// Collapsed survives a refresh from the tool.
+	await h.todo({ action: "add", text: "third" });
+	assert.equal(h.state.widget.length, 1);
+
+	await h.command("toggle");
+	assert.equal(h.state.widget.length, 4);
+
+	// Hidden comes back expanded, through either path.
+	await h.command("hide");
+	await h.shortcut();
+	assert.equal(h.state.widget.length, 4);
+	h.unmount();
+});
+
+test("a click toggles: anywhere when collapsed, only the header when open", async () => {
+	const h = host();
+	await h.todo({ action: "add", text: "a\nb" });
+
+	assert.equal(h.click(1), undefined, "a click in the body must not fold the list");
+	assert.equal(h.state.widget.length, 3);
+
+	assert.deepEqual(h.click(0), { handled: true, render: true });
+	assert.equal(h.state.widget.length, 1);
+
+	h.click(0);
+	assert.equal(h.state.widget.length, 3);
 	h.unmount();
 });
 
