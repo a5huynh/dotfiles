@@ -117,10 +117,11 @@ install-herdr:
     @mkdir -p "$HOME/.config/herdr"
     @just _link "{{justfile_directory()}}/.config/herdr/config.toml" "$HOME/.config/herdr/config.toml"
 
-# Symlink Rex config (individual file — ~/.config/rex/ is Rex's config directory and may hold other files it reads)
+# Symlink Rex config (init.lua + tab-jump/ — ~/.config/rex/ is Rex's config directory and may hold other files it reads)
 install-rex:
     @mkdir -p "$HOME/.config/rex"
     @just _link "{{justfile_directory()}}/.config/rex/init.lua" "$HOME/.config/rex/init.lua"
+    @just _link "{{justfile_directory()}}/.config/rex/tab-jump" "$HOME/.config/rex/tab-jump"
 
 # Not a symlink — `herdr plugin link` records an absolute path in
 # ~/.config/herdr/plugins.json, so it points at this repo directly.

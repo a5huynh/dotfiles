@@ -27,9 +27,11 @@ rex.bind("ctrl+b>right", "pane.focus", { direction = "right" })
 
 -- herdr's default bindings (not set in its config.toml, so the migration above
 -- skipped them). detach (d/q), edit_scrollback (e), open_notification_target
--- (shift+o) and the worktree keys have no Rex equivalent -- pane.view_activity
--- looks like one but does nothing here. prefix+y (tab-jump plugin) is not
--- ported yet.
+-- (shift+o) and the worktree keys have no Rex equivalent.
+--
+-- pane.go_to (and pane.view_activity) do nothing unless Rex.app has Settings >
+-- Developer > Experimental > New Quick Switcher turned on -- an app setting,
+-- not something this file can set.
 rex.bind("ctrl+b>shift+tab", "pane.focus_previous")
 rex.bind("ctrl+b>v", "pane.split.right")
 rex.bind("ctrl+b>-", "pane.split.down")
@@ -53,6 +55,28 @@ rex.bind("ctrl+b>b", "client.sidebar.toggle")
 rex.bind("ctrl+b>s", "client.settings")
 rex.bind("ctrl+b>shift+/", "client.palette.toggle")
 rex.bind("ctrl+b>shift+r", "client.config.reload")
+
+-- prefix+y: port of the herdr tab-jump plugin (tab-jump/jump.sh), opened in a
+-- floating pane over the current tab. It closes itself when the picker exits.
+-- Jumping to another session needs Remote Control on (Settings > Rex Server).
+local tab_jump = os.getenv("HOME") .. "/.config/rex/tab-jump/jump.sh"
+rex.action{
+  name  = "tab_jump",
+  title = "Jump to Tab",
+  run   = function(ctx)
+    return rex.call("session.new_layer", {
+      session_id = ctx.session_id,
+      bounds = { 0.1, 0.15, 0.8, 0.7 },
+      focus = true,
+      layout = { block = {
+        flavor = "com.superlogical.terminal.shell",
+        label = "Jump to tab",
+        options = { command = { tab_jump } },
+      } },
+    })
+  end,
+}
+rex.bind("ctrl+b>y", "tab_jump")
 
 ------------------------------------------------------------------------------
 -- zellij (~/.config/zellij/config.kdl, clear-defaults=true)
