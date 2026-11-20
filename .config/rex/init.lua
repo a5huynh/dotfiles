@@ -25,6 +25,34 @@ rex.bind("ctrl+b>l", "pane.focus", { direction = "right" })
 rex.bind("alt+l", "pane.focus", { direction = "right" })
 rex.bind("ctrl+b>right", "pane.focus", { direction = "right" })
 
+-- herdr's default bindings (not set in its config.toml, so the migration above
+-- skipped them). detach (d/q), edit_scrollback (e) and the worktree keys have
+-- no Rex equivalent. prefix+y (tab-jump plugin) is not ported yet.
+rex.bind("ctrl+b>shift+tab", "pane.focus_previous")
+rex.bind("ctrl+b>v", "pane.split.right")
+rex.bind("ctrl+b>-", "pane.split.down")
+rex.bind("ctrl+b>x", "pane.close")
+rex.bind("ctrl+b>z", "pane.zoom")
+rex.bind("ctrl+b>r", "client.mode.enter", { name = "resize" })
+rex.bind("ctrl+b>shift+p", "pane.rename")
+rex.bind("ctrl+b>g", "pane.go_to")
+rex.bind("ctrl+b>shift+o", "pane.view_activity")
+rex.bind("ctrl+b>c", "client.tab.new")
+rex.bind("ctrl+b>n", "client.tab.next")
+rex.bind("ctrl+b>p", "client.tab.previous")
+rex.bind("ctrl+b>shift+x", "client.tab.close")
+for i = 1, 9 do
+  rex.bind("ctrl+b>" .. i, "client.tab.goto", { index = i })
+end
+rex.bind("ctrl+b>w", "session.switch")
+rex.bind("ctrl+b>shift+n", "session.new")
+rex.bind("ctrl+b>shift+w", "session.rename")
+rex.bind("ctrl+b>shift+d", "session.close")
+rex.bind("ctrl+b>b", "client.sidebar.toggle")
+rex.bind("ctrl+b>s", "client.settings")
+rex.bind("ctrl+b>shift+/", "client.palette.toggle")
+rex.bind("ctrl+b>shift+r", "client.config.reload")
+
 ------------------------------------------------------------------------------
 -- zellij (~/.config/zellij/config.kdl, clear-defaults=true)
 ------------------------------------------------------------------------------
