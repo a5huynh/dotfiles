@@ -52,7 +52,7 @@ bootstrap-herdr-integrations:
     fi
 
 # Symlink everything into $HOME
-install: install-fish install-vim install-git install-zed install-zellij install-claude install-pi install-herdr
+install: install-fish install-vim install-git install-zed install-zellij install-claude install-pi install-herdr install-rex
 
 install-fish:
     @mkdir -p "$HOME/.config"
@@ -116,6 +116,11 @@ install-pi:
 install-herdr:
     @mkdir -p "$HOME/.config/herdr"
     @just _link "{{justfile_directory()}}/.config/herdr/config.toml" "$HOME/.config/herdr/config.toml"
+
+# Symlink Rex config (individual file — ~/.config/rex/ is Rex's config directory and may hold other files it reads)
+install-rex:
+    @mkdir -p "$HOME/.config/rex"
+    @just _link "{{justfile_directory()}}/.config/rex/init.lua" "$HOME/.config/rex/init.lua"
 
 # Not a symlink — `herdr plugin link` records an absolute path in
 # ~/.config/herdr/plugins.json, so it points at this repo directly.
