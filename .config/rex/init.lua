@@ -26,8 +26,10 @@ rex.bind("alt+l", "pane.focus", { direction = "right" })
 rex.bind("ctrl+b>right", "pane.focus", { direction = "right" })
 
 -- herdr's default bindings (not set in its config.toml, so the migration above
--- skipped them). detach (d/q), edit_scrollback (e) and the worktree keys have
--- no Rex equivalent. prefix+y (tab-jump plugin) is not ported yet.
+-- skipped them). detach (d/q), edit_scrollback (e), open_notification_target
+-- (shift+o) and the worktree keys have no Rex equivalent -- pane.view_activity
+-- looks like one but does nothing here. prefix+y (tab-jump plugin) is not
+-- ported yet.
 rex.bind("ctrl+b>shift+tab", "pane.focus_previous")
 rex.bind("ctrl+b>v", "pane.split.right")
 rex.bind("ctrl+b>-", "pane.split.down")
@@ -36,7 +38,6 @@ rex.bind("ctrl+b>z", "pane.zoom")
 rex.bind("ctrl+b>r", "client.mode.enter", { name = "resize" })
 rex.bind("ctrl+b>shift+p", "pane.rename")
 rex.bind("ctrl+b>g", "pane.go_to")
-rex.bind("ctrl+b>shift+o", "pane.view_activity")
 rex.bind("ctrl+b>c", "client.tab.new")
 rex.bind("ctrl+b>n", "client.tab.next")
 rex.bind("ctrl+b>p", "client.tab.previous")
