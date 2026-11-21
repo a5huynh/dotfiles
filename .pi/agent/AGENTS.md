@@ -19,8 +19,8 @@ Dependency management (use these by default):
 - Prefer the standard library or existing project dependencies when possible.
 
 ## Environment
-- Terminal: Ghostty (truecolor). Multiplexer: herdr.
-- No background bash — for long-running processes, run them in a herdr pane so I can observe/interact.
+- Terminal + multiplexer: **Rex** (truecolor; it is both). You're in Rex when `REX_SESSION`/`REX_BLOCK` are set — drive it with the `rex` CLI via the `rex` skill. Older setup: Ghostty + herdr, when `HERDR_ENV=1`.
+- No background bash — for long-running processes, open a separate pane so I can observe/interact: in Rex, `rex split`/`rex run` with `--focus=false` (never send input to your own pane); in herdr, a herdr pane.
 - GitHub via the `gh` CLI.
 
 ## Git & PRs
