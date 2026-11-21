@@ -2,7 +2,7 @@
 # Fuzzy-search every tab in every Rex session and jump to the one you pick.
 # Opened in a floating pane by the tab_jump action in ../init.lua (ctrl+b y).
 # A port of ../../herdr/plugins/tab-jump/jump.sh: rows show agent status,
-# `session › tab` and the folder, with a live preview of the tab's output.
+# `session › tab` and the folder.
 #
 # Entrypoints:
 #   jump.sh            the picker
@@ -85,13 +85,8 @@ done
 list=$(rows)
 [ -n "$list" ] || exit 0
 
-# Bottom-anchored preview, as in the herdr version: fzf draws a preview from its
-# first line, so feed it exactly as many lines as the window is tall. nowrap is
-# part of that -- a wrapped line would push the newest output off the bottom.
-# --with-shell because $SHELL is fish and the preview is POSIX sh.
 pick=$(
     printf '%s\n' "$list" | fzf \
-        --with-shell='sh -c' \
         --ansi \
         --delimiter='\t' \
         --with-nth=1 \
@@ -100,12 +95,9 @@ pick=$(
         --border=none \
         --prompt='jump › ' \
         --pointer='▌' \
-        --header='enter jump · ctrl-r refresh preview · esc cancel' \
+        --header='enter jump · esc cancel' \
         --header-first \
-        --color='fg+:#c0caf5,bg+:#292e42,hl:#7aa2f7,hl+:#7aa2f7,prompt:#7aa2f7,pointer:#7aa2f7,header:#565f89,border:#3b4261' \
-        --preview-window='down,60%,border-top,nowrap' \
-        --bind='ctrl-r:refresh-preview' \
-        --preview='rex capture -s {2} -b {4} --trim --unwrap --format vt 2>/dev/null | tail -n "${FZF_PREVIEW_LINES:-40}"'
+        --color='fg+:#c0caf5,bg+:#292e42,hl:#7aa2f7,hl+:#7aa2f7,prompt:#7aa2f7,pointer:#7aa2f7,header:#565f89'
 ) || exit 0
 
 session_id=$(cut -f2 <<<"$pick")
