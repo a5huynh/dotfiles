@@ -27,24 +27,25 @@ for snum, s in ipairs(list.sessions or {}) do
   call("session.attach", { session_id = s.session_id })
   local view = call("session.view", { session_id = s.session_id })
   for wnum, w in ipairs(view and view.windows or {}) do
-    local blocks = {}
+    local blocks, labels = {}, {}
     for _, layer in ipairs(w.layers or {}) do
       if layer.kind == "tiled" then
         for _, b in ipairs(layer.blocks or {}) do
           if b.creator_name == "com.superlogical.terminal" then
             table.insert(blocks, b.block_id)
+            labels[b.block_id] = b.label
           end
         end
       end
     end
 
     if #blocks > 0 then
-      local lead, status
+      local lead, rec
       for _, id in ipairs(blocks) do
         local ps = block_method(s.session_id, id, "program_status")
-        local rec = ps and ps.records and ps.records[1]
-        if rec and rec.effective_app then
-          lead, status = id, rec.state
+        local r = ps and ps.records and ps.records[1]
+        if r and r.effective_app then
+          lead, rec = id, r
           break
         end
       end
@@ -56,12 +57,27 @@ for snum, s in ipairs(list.sessions or {}) do
       end
 
       local proc = block_method(s.session_id, lead, "process")
-      local cwd = proc and proc.foreground and proc.foreground.cwd
+      local fg = proc and proc.foreground
+      local cwd = fg and fg.cwd
       if not cwd then
         local pwd = block_method(s.session_id, lead, "pwd")
         cwd = pwd and pwd.pwd and pwd.pwd:gsub("^file://[^/]*", "")
       end
       local title = block_method(s.session_id, lead, "title")
+
+      -- Every port any block in the tab listens on: a dev server is as often in
+      -- a split beside the agent as in the agent's own pane.
+      local ports, seen = {}, {}
+      for _, id in ipairs(blocks) do
+        local p = block_method(s.session_id, id, "ports")
+        for _, port in ipairs(p and p.ports or {}) do
+          if not seen[port.port] then
+            seen[port.port] = true
+            table.insert(ports, port.port)
+          end
+        end
+      end
+      table.sort(ports)
 
       table.insert(rows, {
         session_id = s.session_id,
@@ -72,9 +88,14 @@ for snum, s in ipairs(list.sessions or {}) do
         wnum = wnum,
         block_id = lead,
         here = view.active_window_id == w.window_id,
-        status = status or "",
+        status = rec and rec.state or "",
+        kind = rec and rec.kind or "",
+        updated_at = rec and rec.updated_at or "",
+        label = labels[lead] or "",
         title = title and title.title or "",
+        program = fg and (fg.script or fg.argv0 or fg.name) or "",
         cwd = cwd or "",
+        ports = ports,
       })
     end
   end

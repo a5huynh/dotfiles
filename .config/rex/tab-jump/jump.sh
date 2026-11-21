@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 # Fuzzy-search every tab in every Rex session and jump to the one you pick.
 # Opened in a floating pane by the tab_jump action in ../init.lua (ctrl+b y).
-# A port of ../../herdr/plugins/tab-jump/jump.sh: rows show agent status,
-# `session › tab` and the folder.
+# A port of ../../herdr/plugins/tab-jump/jump.sh. Each row:
+#   status + age (or what a blocked agent waits for) · key · session › tab ·
+#   task (pane label) · folder · listening ports
 #
 # Entrypoints:
 #   jump.sh            the picker
 #   jump.sh --rows     print the TSV rows and exit
 #
 # REX_TAB_JUMP_SNAPSHOT=file.json replaces the live snapshot (rows.lua's output),
-# so the rendering and sorting can be checked offline with no Rex server.
+# so the rendering and sorting can be checked offline with no Rex server, and
+# REX_TAB_JUMP_NOW=<epoch> pins the clock the ages are measured against.
 set -euo pipefail
 
 # The floating pane closes the instant this exits, taking stderr with it.
@@ -30,42 +32,80 @@ snapshot() {
 }
 
 rows() {
-    snapshot | jq -r --arg home "$HOME" --arg cur "${REX_SESSION:-}" '
+    snapshot | jq -r --arg home "$HOME" --arg cur "${REX_SESSION:-}" \
+        --argjson now "${REX_TAB_JUMP_NOW:-$(date +%s)}" '
       def pad($n): . + (" " * ([$n - (. | length), 0] | max));
       def clip($n): if (. | length) > $n then .[:$n - 1] + "…" else . end;
       def shorten: if startswith($home) then "~" + .[($home | length):] else . end;
+      def c($rgb): "\u001b[38;2;\($rgb)m\(.)\u001b[0m";
+
+      # Rex stamps reports like 2026-11-20T23:28:23.194065-08:00, which jq'"'"'s
+      # fromdateiso8601 rejects (fraction, offset), so parse it by hand.
+      def epoch:
+        (capture("^(?<dt>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(\\.\\d+)?(?<tz>Z|[+-]\\d{2}:\\d{2})$") // null) as $m
+        | if $m == null then null
+          else ($m.dt + "Z" | fromdateiso8601)
+               - (if $m.tz == "Z" then 0
+                  else ($m.tz[0:1] + "1" | tonumber)
+                       * (($m.tz[1:3] | tonumber) * 3600 + ($m.tz[4:6] | tonumber) * 60) end)
+          end;
+      def ago:
+        if . == null then ""
+        else ([$now - ., 0] | max) as $s
+          | if   $s < 60    then "\($s | floor)s"
+            elif $s < 3600  then "\($s / 60 | floor)m"
+            elif $s < 86400 then "\($s / 3600 | floor)h"
+            else "\($s / 86400 | floor)d" end
+        end;
 
       # Same attention order as herdr: the two states that want you, then busy,
       # then quiet, then tabs with no agent at all.
       {"blocked": 0, "error": 0, "done": 1, "working": 2, "idle": 3} as $rank
 
       | map(
-          # Rex names an unnamed tab "Window <8 hex>", which says nothing; the
-          # terminal title (e.g. pi'"'"'s "π - <dir>") is the better fallback.
-          (if (.window | test("^Window [0-9a-f]{8}$")) and (.title != "")
-           then .title else .window end) as $tab
+          # A tab Rex named itself ("Window <8 hex>") is identified by what runs
+          # in it instead. The task is the pane label pi sets from the first
+          # prompt (session-title.ts), else the terminal title -- but not pi'"'"'s
+          # default "π - <dir>", which the folder column already says.
+          (if (.window | test("^Window [0-9a-f]{8}$"))
+           then (if .program != "" then .program else "tab \(.wnum)" end)
+           else .window end) as $tab
+          | (if (.label != "" and .label != "shell") then .label
+             elif (.title != "" and (.title | startswith("π - ") | not)) then .title
+             else "" end) as $task
           | . + {
-              rank: ($rank[.status] // 4),
-              key:  "\(.snum).\(.wnum)",
-              cur:  (.here and .session_id == $cur),
-              name: ("\(.session) › \($tab)" | clip(40)),
-              dir:  (.cwd | shorten)
+              rank:  ($rank[.status] // 4),
+              key:   "\(.snum).\(.wnum)",
+              cur:   (.here and .session_id == $cur),
+              name:  ("\(.session) › \($tab)" | clip(32)),
+              task:  ($task | clip(40)),
+              dir:   (.cwd | shorten),
+              # Blocked says what it is waiting for; everything else, for how long.
+              when:  (if .status == "blocked" and .kind != "" then .kind
+                      elif .status == "" then ""
+                      else (.updated_at | epoch | ago) end),
+              ports: ((.ports | if type == "array" then . else [] end) | map(":\(.)") | join(" "))
             })
       | sort_by([.rank, .snum, .wnum])
+      | (map(.when | length) | max // 0) as $wwhen
       | (map(.key  | length) | max // 0) as $wkey
       | (map(.name | length) | max // 0) as $wname
+      | (map(.task | length) | max // 0) as $wtask
       | .[]
-      | (if   .status == "idle"    then "\u001b[38;2;158;206;106m●"
-         elif .status == "working" then "\u001b[38;2;224;175;104m◐"
-         elif .status == "blocked" then "\u001b[38;2;247;118;142m▲"
-         elif .status == "error"   then "\u001b[38;2;247;118;142m✗"
-         elif .status == "done"    then "\u001b[38;2;125;207;255m✓"
-         else "\u001b[38;2;86;95;137m○" end) as $dot
-      | [ "\($dot)\u001b[0m "
-          + "\u001b[38;2;86;95;137m\(.key | pad($wkey))\u001b[0m "
-          + (if .cur then "\u001b[38;2;122;162;247m" else "\u001b[0m" end)
-          + "\(.name | pad($wname))\u001b[0m  "
-          + "\u001b[38;2;169;177;214m\(.dir)\u001b[0m",
+      | (if   .status == "idle"    then "158;206;106" | [., "●"]
+         elif .status == "working" then "224;175;104" | [., "◐"]
+         elif .status == "blocked" then "247;118;142" | [., "▲"]
+         elif .status == "error"   then "247;118;142" | [., "✗"]
+         elif .status == "done"    then "125;207;255" | [., "✓"]
+         else "86;95;137" | [., "○"] end) as [$rgb, $dot]
+      | .cur as $here | .status as $st
+      | [ ($dot | c($rgb)) + " "
+          + ((.when | pad($wwhen)) | c(if $st == "blocked" then $rgb else "86;95;137" end)) + " "
+          + ((.key | pad($wkey)) | c("86;95;137")) + " "
+          + ((.name | pad($wname)) | if $here then c("122;162;247") else . end) + "  "
+          + ((.task | pad($wtask)) | c("169;177;214")) + "  "
+          + (.dir | c("86;95;137"))
+          + (if .ports != "" then "  " + (.ports | c("115;218;202")) else "" end),
           .session_id, .window_id, .block_id ]
       | @tsv'
 }

@@ -100,7 +100,7 @@ function messageText(message: unknown): string {
  * terminal output, so this is reachable, not theoretical.
  */
 function normalize(text: string): string {
-	const clean = text
+	const clean = unwrapSkill(text)
 		// eslint-disable-next-line no-control-regex
 		.replace(/[\u0000-\u001f\u007f-\u009f]+/g, " ")
 		.replace(/\s+/g, " ")
@@ -113,6 +113,17 @@ function normalize(text: string): string {
 	// escapes in a title would bleed into herdr, which renders labels literally and
 	// whose picker wraps this field in its own color spans.
 	return stripTerminalSequences(truncateToWidth(clean, MAX_LABEL_WIDTH, "…"));
+}
+
+/**
+ * `/skill:X args` reaches the session as the whole skill file wrapped in
+ * `<skill name="X" location="…">…</skill>`, then a blank line and the args —
+ * so without this every skill-started session is labelled with that markup.
+ * Same pattern pi itself uses to fold the block back up (agent-session.js).
+ */
+function unwrapSkill(text: string): string {
+	const match = text.match(/^<skill name="([^"]+)" location="[^"]+">\n[\s\S]*?\n<\/skill>(?:\n\n([\s\S]+))?$/);
+	return match ? `/${match[1]}${match[2] ? ` ${match[2]}` : ""}` : text;
 }
 
 /** Recover a label from an already-populated session, for resume and reload. */

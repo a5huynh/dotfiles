@@ -282,6 +282,20 @@ test("RPC mode is left alone even though it reports hasUI", async () => {
 	assert.equal(h.state.titles.length, 0, "a terminal title has no meaning over RPC");
 });
 
+test("a skill invocation is labelled /name plus its args, not the skill file", async () => {
+	const h = host();
+	await h.fire("session_start", { reason: "startup" });
+	await h.prompt('<skill name="review-pr" location="/x/SKILL.md">\nReferences are relative to /x.\n\n# Review\nbody\n</skill>\n\nPR 983');
+	assert.equal(h.title(), "/review-pr PR 983");
+});
+
+test("a skill invoked with no args is just /name", async () => {
+	const h = host();
+	await h.fire("session_start", { reason: "startup" });
+	await h.prompt('<skill name="review" location="/x/SKILL.md">\nbody\n</skill>');
+	assert.equal(h.title(), "/review");
+});
+
 test("outside herdr and Rex the extension does nothing", async () => {
 	process.env.HERDR_ENV = "";
 	const state = { handlers: new Map() };
