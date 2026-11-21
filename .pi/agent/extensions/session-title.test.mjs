@@ -4,50 +4,62 @@
  *
  *   node .pi/agent/extensions/session-title.test.mjs
  *
- * Same shape as todo-md.test.mjs — the extension is transpiled with the esbuild
- * that ships inside pi and imported into a sandbox whose `node_modules` symlinks
- * pi's own packages, so the real `truncateToWidth` is exercised rather than a
- * stand-in. The host surface (`pi.on`, the session manager, `ui.setTitle`) is
- * faked here, which is what makes the emitted title assertable.
+ * Same shape as todo-md.test.mjs — the extension is loaded through pi's own jiti
+ * from a sandbox whose `node_modules` symlinks pi's own packages, so the real
+ * `truncateToWidth` is exercised rather than a stand-in. The host surface
+ * (`pi.on`, `pi.exec`, the session manager, `ui.setTitle`) is faked here, which
+ * is what makes the emitted title and the `rex` calls assertable — no test ever
+ * reaches a real Rex server, even when run from inside a Rex pane.
  */
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 // ------------------------------------------------------------- sandbox ----
 
-/** pi's package dir, found through the `pi` on PATH rather than a hardcoded prefix. */
+/**
+ * pi's package dir, found through the `pi` on PATH rather than a hardcoded prefix.
+ * A managed install puts a shell wrapper there (`~/.pi/agent/bin/pi`) that execs
+ * `install/releases/<current-version>/node_modules/.bin/pi`, so follow it.
+ */
 function findPiDir() {
-	const bin = realpathSync(execFileSync("sh", ["-c", "command -v pi"], { encoding: "utf8" }).trim());
+	let bin = realpathSync(execFileSync("sh", ["-c", "command -v pi"], { encoding: "utf8" }).trim());
+	const current = join(dirname(dirname(bin)), "install", "current-version");
+	if (existsSync(current)) {
+		const version = readFileSync(current, "utf8").trim();
+		bin = realpathSync(join(dirname(current), "releases", version, "node_modules", ".bin", "pi"));
+	}
 	const dir = dirname(dirname(dirname(bin))); // dist/bundle/cli.js -> package root
 	assert.ok(existsSync(join(dir, "package.json")), `pi package not found at ${dir}`);
 	return dir;
 }
 
 const PI_DIR = findPiDir();
+/** A dependency of pi's, nested under its package or hoisted beside it. */
+const dep = (name) =>
+	[join(PI_DIR, "node_modules", name), join(dirname(dirname(PI_DIR)), name)].find((p) => existsSync(p)) ??
+	assert.fail(`${name} not found beside pi at ${PI_DIR}`);
 const SANDBOX = mkdtempSync(join(tmpdir(), "session-title-test-"));
 
 mkdirSync(join(SANDBOX, "node_modules", "@earendil-works"), { recursive: true });
-symlinkSync(join(PI_DIR, "node_modules", "@earendil-works", "pi-tui"), join(SANDBOX, "node_modules", "@earendil-works", "pi-tui"));
+symlinkSync(dep("@earendil-works/pi-tui"), join(SANDBOX, "node_modules", "@earendil-works", "pi-tui"));
 symlinkSync(PI_DIR, join(SANDBOX, "node_modules", "@earendil-works", "pi-coding-agent"));
 
-const BUILT = join(SANDBOX, "session-title.mjs");
-execFileSync(join(PI_DIR, "node_modules", ".bin", "esbuild"), [
-	join(import.meta.dirname, "session-title.ts"),
-	"--format=esm",
-	"--platform=node",
-	"--target=node22",
-	`--outfile=${BUILT}`,
-	"--log-level=error",
-]);
+// Loaded the way pi loads it: through pi's own jiti. Copied into the sandbox so
+// its imports resolve against the sandbox `node_modules`.
+const BUILT = join(SANDBOX, "session-title.ts");
+writeFileSync(BUILT, readFileSync(join(import.meta.dirname, "session-title.ts")));
 
-// Read at module load by the extension, so both must be set before the import.
-process.env.HERDR_ENV = "1";
+// The delay is read at module load, so it must be set before the import. The
+// gate (HERDR_ENV / REX_*) is read per instance, which host() relies on.
 process.env.PI_SESSION_TITLE_DELAY_MS = "5";
-const { default: extension } = await import(BUILT);
+const { createJiti } = await import(join(dep("jiti"), "lib", "jiti.mjs"));
+const extension = await createJiti(import.meta.url, { fsCache: false, moduleCache: false }).import(BUILT, {
+	default: true,
+});
 
 const REASSERT_MS = 25;
 const settle = () => new Promise((resolve) => setTimeout(resolve, REASSERT_MS));
@@ -57,10 +69,29 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, REASSERT_MS));
 const userEntry = (text) => ({ type: "message", message: { role: "user", content: text } });
 
 /** One extension instance plus the host surface it talks to. */
-function host({ sessionName = undefined, entries = [], mode = "tui", hasUI = true } = {}) {
-	const state = { handlers: new Map(), titles: [] };
+function host({ sessionName = undefined, entries = [], mode = "tui", hasUI = true, rex = false, rexLabel = "shell" } = {}) {
+	const state = { handlers: new Map(), titles: [], rex: [] };
 
-	extension({ on: (event, handler) => state.handlers.set(event, handler) });
+	// Default to herdr only, whatever pane this test happens to run in.
+	process.env.HERDR_ENV = rex ? "" : "1";
+	if (rex) {
+		process.env.REX_SESSION = "session:test";
+		process.env.REX_BLOCK = "block:test";
+	} else {
+		delete process.env.REX_SESSION;
+		delete process.env.REX_BLOCK;
+	}
+
+	extension({
+		on: (event, handler) => state.handlers.set(event, handler),
+		exec: async (command, args) => {
+			state.rex.push([command, ...args]);
+			if (args[0] === "block" && args[1] === "inspect") {
+				return { stdout: JSON.stringify({ block: { label: rexLabel } }), stderr: "", code: 0 };
+			}
+			return { stdout: "", stderr: "", code: 0 };
+		},
+	});
 
 	const ctx = {
 		mode,
@@ -85,6 +116,8 @@ function host({ sessionName = undefined, entries = [], mode = "tui", hasUI = tru
 		ctx,
 		fire,
 		title: () => state.titles[state.titles.length - 1],
+		/** The labels passed to `rex block rename`, in order. */
+		renames: () => state.rex.filter((c) => c[2] === "rename").map((c) => c[c.length - 1]),
 		prompt: (text) => fire("message_start", { message: { role: "user", content: text } }),
 		setName: (name) => {
 			sessionName = name;
@@ -247,6 +280,84 @@ test("RPC mode is left alone even though it reports hasUI", async () => {
 	await h.prompt("Review the auth refactor");
 	await settle();
 	assert.equal(h.state.titles.length, 0, "a terminal title has no meaning over RPC");
+});
+
+test("outside herdr and Rex the extension does nothing", async () => {
+	process.env.HERDR_ENV = "";
+	const state = { handlers: new Map() };
+	delete process.env.REX_SESSION;
+	delete process.env.REX_BLOCK;
+	extension({ on: (event, handler) => state.handlers.set(event, handler) });
+	assert.equal(state.handlers.size, 0, "no handlers outside a multiplexer");
+});
+
+test("in Rex the first prompt renames the pane as well as the title", async () => {
+	const h = host({ rex: true });
+	await h.fire("session_start", { reason: "startup" });
+	await h.prompt("Review the auth refactor");
+	await h.prompt("and the tests");
+	await settle();
+	assert.equal(h.title(), "Review the auth refactor");
+	assert.deepEqual(h.renames(), ["Review the auth refactor"], "one rename, not one per turn");
+	assert.deepEqual(h.state.rex.at(-1), ["rex", "block", "rename", "-s", "session:test", "block:test", "Review the auth refactor"]);
+});
+
+test("the original pane label is read before the first rename overwrites it", async () => {
+	const h = host({ rex: true });
+	await h.fire("session_start", { reason: "startup" });
+	await h.prompt("Review the auth refactor");
+	await settle();
+	assert.equal(h.state.rex[0][2], "inspect");
+	assert.equal(h.state.rex[1][2], "rename");
+});
+
+test("quitting pi puts the original pane label back", async () => {
+	const h = host({ rex: true, rexLabel: "logs" });
+	await h.fire("session_start", { reason: "startup" });
+	await h.prompt("Review the auth refactor");
+	await h.fire("session_shutdown", { reason: "quit" });
+	assert.deepEqual(h.renames(), ["Review the auth refactor", "logs"]);
+});
+
+test("a pane pi never renamed is left alone at shutdown", async () => {
+	const h = host({ rex: true });
+	await h.fire("session_start", { reason: "startup" });
+	await h.fire("session_shutdown", { reason: "quit" });
+	assert.equal(h.state.rex.length, 0);
+});
+
+test("an explicit session name goes on the Rex pane", async () => {
+	const h = host({ rex: true, sessionName: "auth-refactor" });
+	await h.fire("session_start", { reason: "startup" });
+	await settle();
+	assert.equal(h.state.titles.length, 0, "pi still owns the title");
+	assert.deepEqual(h.renames(), ["auth-refactor"]);
+});
+
+test("naming a session mid-run renames the Rex pane to the name", async () => {
+	const h = host({ rex: true });
+	await h.fire("session_start", { reason: "startup" });
+	await h.prompt("Review the auth refactor");
+	h.setName("auth-refactor");
+	await h.fire("session_info_changed", { name: "auth-refactor" });
+	await settle();
+	assert.deepEqual(h.renames(), ["Review the auth refactor", "auth-refactor"]);
+});
+
+test("a herdr pane never calls rex", async () => {
+	const h = host();
+	await h.fire("session_start", { reason: "startup" });
+	await h.prompt("Review the auth refactor");
+	await h.fire("session_shutdown", { reason: "quit" });
+	assert.equal(h.state.rex.length, 0);
+});
+
+test("RPC mode in a Rex pane renames nothing", async () => {
+	const h = host({ rex: true, mode: "rpc" });
+	await h.fire("session_start", { reason: "startup" });
+	await h.prompt("Review the auth refactor");
+	await settle();
+	assert.equal(h.state.rex.length, 0);
 });
 
 // ----------------------------------------------------------------- run ----

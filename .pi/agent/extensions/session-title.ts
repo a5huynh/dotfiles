@@ -21,9 +21,16 @@
  * Bare label, no `π - ` prefix and no cwd: the sidebar row and the picker
  * already print workspace and tab beside it, and jump.sh clips this field to 46
  * columns, so a prefix is pure overhead. That is also exactly the shape Claude
- * emits, which is the shape the sidebar was tuned for. Gated on HERDR_ENV so
- * that outside herdr — where the OS window title has no other "which agent is
- * this" marker — pi's own `π - <dirname>` is left alone.
+ * emits, which is the shape the sidebar was tuned for. Gated on HERDR_ENV or a
+ * Rex pane (REX_SESSION + REX_BLOCK) so that elsewhere — where the OS window
+ * title has no other "which agent is this" marker — pi's own `π - <dirname>`
+ * is left alone.
+ *
+ * Inside Rex the pane itself is renamed too (`rex block rename`), since Rex
+ * shows a pane's *label* in its pane header, switcher and tab-jump picker, and
+ * that label is otherwise just "shell". An explicit session name goes on the
+ * pane as well, and the original label is put back when pi exits, so a shell
+ * left in the pane does not keep advertising a finished task.
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -45,8 +52,18 @@ const REASSERT_DELAY_MS = (() => {
 
 type Source = "first" | "last";
 
+/** The Rex pane pi is running in, if any. Rex sets both on every terminal. */
+function rexPane(): { session: string; block: string } | undefined {
+	const session = process.env.REX_SESSION;
+	const block = process.env.REX_BLOCK;
+	return session && block ? { session, block } : undefined;
+}
+
 function enabled(): boolean {
-	return process.env.HERDR_ENV === "1" && process.env.PI_SESSION_TITLE !== "off";
+	if (process.env.PI_SESSION_TITLE === "off") {
+		return false;
+	}
+	return process.env.HERDR_ENV === "1" || !!rexPane();
 }
 
 function source(): Source {
@@ -145,6 +162,54 @@ export default function (pi: ExtensionAPI) {
 	let setTitle: ((title: string) => void) | undefined;
 	let generation = 0;
 
+	const rex = rexPane();
+	/** What the pane was called before we touched it; read once, lazily. */
+	let originalPaneLabel: string | undefined;
+	let paneLabel: string | undefined;
+	/**
+	 * Every `rex` call goes through one chain, so renames land in order and the
+	 * original label is always read before the first rename overwrites it. It is
+	 * fire-and-forget from the handlers' point of view — pi never waits on Rex —
+	 * except at shutdown, where the restore has to finish before pi exits.
+	 */
+	let rexQueue: Promise<unknown> = Promise.resolve();
+
+	function rexCall(args: string[]): Promise<{ stdout: string; code: number } | undefined> {
+		return pi.exec("rex", args, { timeout: 5000 }).catch(() => undefined);
+	}
+
+	function renamePane(name: string): Promise<unknown> {
+		if (!rex || !name || name === paneLabel) {
+			return rexQueue;
+		}
+		paneLabel = name;
+		rexQueue = rexQueue.then(async () => {
+			if (originalPaneLabel === undefined) {
+				const res = await rexCall(["block", "inspect", "-s", rex.session, rex.block, "--json"]);
+				try {
+					originalPaneLabel = JSON.parse(res?.stdout ?? "").block?.label ?? "";
+				} catch {
+					originalPaneLabel = "";
+				}
+			}
+			await rexCall(["block", "rename", "-s", rex.session, rex.block, name]);
+		});
+		return rexQueue;
+	}
+
+	function restorePane(): Promise<unknown> {
+		if (!rex || paneLabel === undefined) {
+			return rexQueue;
+		}
+		paneLabel = undefined;
+		rexQueue = rexQueue.then(async () => {
+			if (originalPaneLabel) {
+				await rexCall(["block", "rename", "-s", rex.session, rex.block, originalPaneLabel]);
+			}
+		});
+		return rexQueue;
+	}
+
 	function apply(): void {
 		if (!label || label === applied) {
 			return;
@@ -155,6 +220,7 @@ export default function (pi: ExtensionAPI) {
 		} catch {
 			// A torn-down UI is not worth surfacing; the next event re-applies.
 		}
+		void renamePane(label);
 	}
 
 	function scheduleApply(): void {
@@ -206,6 +272,7 @@ export default function (pi: ExtensionAPI) {
 		applied = undefined;
 		if (named(ctx)) {
 			generation += 1; // cancel any pending re-assert
+			void renamePane(normalize(ctx.sessionManager.getSessionName() ?? ""));
 			return;
 		}
 		label = labelFromEntries(ctx);
@@ -221,6 +288,7 @@ export default function (pi: ExtensionAPI) {
 			// pi owns the title again; let its own update stand.
 			generation += 1;
 			applied = undefined;
+			void renamePane(normalize(event.name));
 			return;
 		}
 		// Name cleared — pi fell back to `π - <dirname>`, so re-assert ours.
@@ -247,5 +315,14 @@ export default function (pi: ExtensionAPI) {
 		label = text;
 		// Well clear of pi's own title update, so apply immediately.
 		apply();
+	});
+
+	// Awaited, unlike every other rename: on quit the process is about to exit.
+	// Any other reason starts a new session, whose first prompt renames it again.
+	pi.on("session_shutdown", async (_event, ctx) => {
+		if (!interactive(ctx)) {
+			return;
+		}
+		await restorePane();
 	});
 }
