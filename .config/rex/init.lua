@@ -60,13 +60,50 @@ rex.bind("ctrl+b>shift+r", "client.config.reload")
 -- floating pane over the current tab. It closes itself when the picker exits.
 -- Jumping to another session needs Remote Control on (Settings > Rex Server).
 local tab_jump = os.getenv("HOME") .. "/.config/rex/tab-jump/jump.sh"
+
+-- Height that fits the list: one line per tab, plus fzf's header and prompt and
+-- the pane's own chrome, as a fraction of the window and clamped to 15-70%.
+-- Bounds are fractions, so the window's height in rows comes from its tallest
+-- tiled block -- exact for one pane or side-by-side splits; a stacked split
+-- under-measures, which only makes the panel taller than it needs to be.
+local function tab_jump_height(session_id)
+  local tabs = 0
+  for _, s in ipairs((rex.call("session.list", {}) or {}).sessions or {}) do
+    pcall(rex.call, "session.attach", { session_id = s.session_id })
+    local ok, v = pcall(rex.call, "session.view", { session_id = s.session_id })
+    if ok and v then tabs = tabs + #(v.windows or {}) end
+  end
+
+  local rows = 0
+  local ok, v = pcall(rex.call, "session.view", { session_id = session_id })
+  for _, w in ipairs(ok and v and v.windows or {}) do
+    if w.window_id == v.active_window_id then
+      for _, layer in ipairs(w.layers or {}) do
+        if layer.kind == "tiled" then
+          for _, b in ipairs(layer.blocks or {}) do
+            local got, size = pcall(rex.call, "block.method", {
+              session_id = session_id, block_id = b.block_id, method = "size", args = {},
+            })
+            if got and size and size.rows and size.rows > rows then rows = size.rows end
+          end
+        end
+      end
+    end
+  end
+  if rows == 0 then return 0.4 end
+
+  local want = (tabs + 5) / rows
+  return math.max(0.15, math.min(0.7, want))
+end
+
 rex.action{
   name  = "tab_jump",
   title = "Jump to Tab",
   run   = function(ctx)
+    local h = tab_jump_height(ctx.session_id)
     return rex.call("session.new_layer", {
       session_id = ctx.session_id,
-      bounds = { 0.1, 0.15, 0.8, 0.7 },
+      bounds = { 0.1, 0.1, 0.8, h },
       focus = true,
       layout = { block = {
         flavor = "com.superlogical.terminal.shell",
